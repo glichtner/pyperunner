@@ -86,7 +86,7 @@ class Task(Node, ABC):
     def run(self):
         pass
 
-    def run_wrapper(self, func, input):
+    def run_wrapper(self, func, input, static=False, receives_input=True):
         self.logger.info("Starting")
 
         if self.output_exists() and not self.reload:
@@ -95,7 +95,15 @@ class Task(Node, ABC):
         else:
             try:
                 self.store_params()
-                output = func(self, data=input, **self.params)
+                args = []
+                kwargs = self.params.copy()
+                if not static:
+                    args.append(self)
+                if receives_input:
+                    kwargs["data"] = input
+
+                output = func(*args, **kwargs)
+
                 self.store_output(output)
             except Exception as e:
                 self.logger.error(str(e))
@@ -173,14 +181,6 @@ class Task(Node, ABC):
         return f"{self.task_name}({self.tag})#{self.hash()}#{hash(self)}"
 
 
-def run(func):
-    @wraps(func)
-    def wrapper(self: Task, input: Any):
-        return self.run_wrapper(func, input)
-
-    return wrapper
-
-
 class Pipeline(DAG):
     colormap = {
         Task.Status.FAILURE: "red",
@@ -193,9 +193,6 @@ class Pipeline(DAG):
     def __init__(self, name):
         super().__init__()
         self.name = name
-
-    def run(self):
-        pass
 
     def _add_node(self, G, node: Task):
         child: Task
