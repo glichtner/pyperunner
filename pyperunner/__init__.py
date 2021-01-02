@@ -1,11 +1,15 @@
 import traceback
+import uuid
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
+from datetime import datetime
 from enum import Enum
 from queue import Empty
 from typing import List, Set, Any, Dict
 
 import os
+
+import joblib
 import networkx as nx
 import multiprocessing
 import time
@@ -14,6 +18,7 @@ from functools import wraps
 import json
 import hashlib
 import pydot
+import yaml
 
 # inspired by https://github.com/ecdavis/multiprocessing_dag
 
@@ -48,10 +53,12 @@ class DAG:
         self.root(x)
         return x
 
-    def _add_node(self, G, node):
+    def _add_node(self, G: nx.DiGraph, node: Node):
+        G.add_node(node)
+
         for child in node.children:
-            G.add_edges_from([(node, child)])
             self._add_node(G, child)
+            G.add_edge(node, child)
 
     def create_graph(self):
         G = nx.DiGraph()
@@ -72,6 +79,9 @@ class Root(Node):
     def __init__(self):
         super().__init__("root")
 
+    def _hash(self):
+        return [hashlib.md5("root".encode("utf-8")).hexdigest()]
+
 
 class Task(Node, ABC):
     class Status(Enum):
@@ -89,22 +99,67 @@ class Task(Node, ABC):
         exception: Exception
         traceback: str
 
-    def __init__(self, name, wait=1, **kwargs):
+    def __init__(self, name, wait=1, reload=False, **kwargs):
         super().__init__(self.__class__.__name__ + f"({name})")
         self.params: Dict = kwargs
         self.wait: int = wait
         self.data_path: str = None
         self.output: Any = None
         self.status: Task.Status = Task.Status.NOT_STARTED
+        self.result: Task.TaskResult = None
+        self.reload: bool = reload
 
-    def hash(self):
-        s = json.dumps(self.params)
+    def _single_node_hash(self):
+        s = json.dumps(
+            {"class": self.__class__.__name__, "name": self.name, "params": self.params}
+        )
         s = s.encode("utf-8")
         return hashlib.md5(s).hexdigest()
+
+    def _hash(self):
+        hash = [self._single_node_hash() + "_" + self.name]
+
+        for parent in self.parents:
+            hash += parent._hash()
+
+        return hash
+
+    def hash(self):
+        return hashlib.md5("/".join(self._hash()).encode("utf-8")).hexdigest()
 
     @abstractmethod
     def run(self):
         pass
+
+    def run_wrapper(self, func, input):
+        print(self.name, "start")
+
+        if self.output_exists() and not self.reload:
+            print(self.name, "skipped")
+            output = self.load_output()
+        else:
+            time.sleep(self.wait)
+            try:
+                self.store_params()
+                output = func(self, data=input, **self.params)
+                self.store_output(output)
+            except Exception as e:
+                self.result = Task.TaskResult(
+                    status=Task.Status.FAILURE,
+                    output=None,
+                    exception=e,
+                    traceback=traceback.format_exc(),
+                )
+                raise e
+
+        self.result = Task.TaskResult(
+            status=Task.Status.SUCCESS, output=output, exception=None, traceback=None,
+        )
+
+        # print(self.name, input, result.output, result.status)
+        print(self.name, "finish", self.result.status)
+
+        return self.result
 
     def set_data_path(self, path: str):
         self.data_path = path
@@ -115,37 +170,36 @@ class Task(Node, ABC):
     def set_status(self, status: "Task.Status"):
         self.status = status
 
+    def output_filename(self, filename="result.dump.gz"):
+        path = os.path.realpath(os.path.join(self.data_path, self.name, self.hash()))
+        if not os.path.exists(path):
+            os.makedirs(path)
+        return os.path.join(path, filename)
+
+    def output_exists(self):
+        return os.path.exists(self.output_filename())
+
+    def store_output(self, output):
+        filename = self.output_filename()
+        joblib.dump(output, filename)
+
+    def store_params(self):
+        filename = self.output_filename("params.yaml")
+        with open(filename, "w") as f:
+            yaml.dump(self.params, f, default_flow_style=False)
+
+    def load_output(self):
+        filename = self.output_filename()
+        return joblib.load(filename)
+
     def __str__(self):
-        return self.name  # + '_' + self.hash()
+        return self.name + "#" + self.hash() + "#" + str(hash(self))
 
 
 def run(func):
     @wraps(func)
     def wrapper(self: Task, input: Any):
-
-        print(self.name, "start")
-        time.sleep(self.wait)
-        try:
-            output = func(self, data=input, **self.params)
-            self.result = Task.TaskResult(
-                status=Task.Status.SUCCESS,
-                output=output,
-                exception=None,
-                traceback=None,
-            )
-        except Exception as e:
-            self.result = Task.TaskResult(
-                status=Task.Status.FAILURE,
-                output=None,
-                exception=e,
-                traceback=traceback.format_exc(),
-            )
-            raise e
-
-        # print(self.name, input, result.output, result.status)
-        print(self.name, "finish", self.result.status)
-
-        return self.result
+        return self.run_wrapper(func, input)
 
     return wrapper
 
@@ -169,7 +223,9 @@ class Pipeline(DAG):
     def _add_node(self, G, node: Task):
         child: Task
 
-        G.add_node(node, style="filled", fillcolor=self.colormap[node.status])
+        G.add_node(
+            node, style="filled", fillcolor=self.colormap[node.status], label=node.name
+        )
 
         for child in node.children:
             self._add_node(G, child)
@@ -226,7 +282,7 @@ class Process(multiprocessing.Process):
 
 
 class Runner:
-    def __init__(self, data_path, process_limit=multiprocessing.cpu_count()):
+    def __init__(self, data_path, log_path, process_limit=multiprocessing.cpu_count()):
         self.tasks_finished: Set[Task] = set()
         self.tasks_error: Set[Task] = set()
         self.tasks_queue: List[Task] = []
@@ -237,8 +293,12 @@ class Runner:
         self.G: nx.DiGraph = None
 
         if not os.path.exists(data_path):
-            os.mkdirs(data_path)
+            os.makedirs(data_path)
         self.data_path: str = data_path
+
+        if not os.path.exists(log_path):
+            os.makedirs(log_path)
+        self.log_path: str = log_path
 
     def dequeue(self):
         for task in self.tasks_queue:
@@ -290,7 +350,7 @@ class Runner:
                 self.tasks_error.add(task)
                 # raise result.exception
 
-            self.status_image(f"data/status-{time.time()}.png")
+            # self.status_image(f"{self.data_path}/img/status-{time.time()}.png")
 
     def set_pipeline(self, pipeline: Pipeline):
         self.pipeline = pipeline
@@ -301,10 +361,18 @@ class Runner:
         with open(fname, "wb") as f:
             f.write(img)
 
+    def generate_run_name(self):
+        dtstr = datetime.now().strftime("%y%m%dT%H%M%S")
+        return self.pipeline.name + "_" + dtstr
+
     def run(self, pipeline):
 
         self.set_pipeline(pipeline)
         self.tasks_queue = list(nx.topological_sort(self.G))
+
+        run_name = self.generate_run_name()
+        output_path = os.path.join(self.log_path, run_name)
+        os.mkdir(output_path)
 
         while len(self.tasks_queue) > 0 or len(self.proc_running) > 0:
             if len(self.proc_running) < self.process_limit:
@@ -316,7 +384,8 @@ class Runner:
             self.finish_tasks()
 
             time.sleep(0.01)
-        self.status_image(f"data/img/status-{time.time()}.png")
+
+        self.status_image(f"{output_path}/status.png")
 
 
 def main():
@@ -327,12 +396,12 @@ def main():
 
     p1 = d1(ProcessDataTask("covid", param="params1", other_param="2", wait=1))
     p2 = d2(ProcessDataTask("influenza", param="params2", wait=1))
-    p2 = p2(ProcessDataTask("influenza2", param="params3", wait=1))
+    p2 = p2(ProcessDataTask("influenza2", param="params4", wait=1))
     e = EvaluateDataTask("both")
     p1(e)
     p2(e)
 
-    runner = Runner(data_path="data/")
+    runner = Runner(data_path="../data/", log_path="../log/")
     runner.run(p)
 
 

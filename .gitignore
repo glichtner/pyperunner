@@ -16,3 +16,5 @@ MANIFEST
 *.egg-info/
 .ipynb_checkpoints/
 data/
+notebooks/
+log/
