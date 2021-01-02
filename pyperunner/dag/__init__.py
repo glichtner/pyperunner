@@ -4,34 +4,34 @@ import networkx as nx
 
 
 class Node:
-    def __init__(self, name):
+    def __init__(self, name: str):
         self.name: str = name
         self.children: List[Node] = []
         self.parents: List[Node] = []
-        self.dag: DAG = None
+        self.dag: DAG
 
-    def _add_child(self, other):
+    def _add_child(self, other: "Node") -> None:
         self.children.append(other)
 
-    def _add_parent(self, other):
+    def _add_parent(self, other: "Node") -> None:
         self.parents.append(other)
 
-    def __call__(self, node: Union["Node", List["Node"]]):
+    def __call__(self, node: Union["Node", List["Node"]]) -> "Node":
         if not type(node) == list:
-            node = [node]
+            node = [node]  # type: ignore
 
-        for n in node:
+        for n in node:  # type: ignore
             self.connect_parent(n)
 
         return self
 
-    def connect_child(self, node: "Node"):
+    def connect_child(self, node: "Node") -> "Node":
         return self.connect(node, as_child=True)
 
-    def connect_parent(self, node: "Node"):
+    def connect_parent(self, node: "Node") -> "Node":
         return self.connect(node, as_child=False)
 
-    def connect(self, node: "Node", as_child: bool):
+    def connect(self, node: "Node", as_child: bool) -> "Node":
         if self.dag is not None and not self.dag.is_unique_node(node):
             raise ValueError(f"Node names must be unique, '{node.name}' already exists")
 
@@ -47,49 +47,51 @@ class Node:
 
         return self
 
-    def __str__(self):
+    def __str__(self) -> str:
         return self.name
 
 
 class DAG:
-    def __init__(self):
+    def __init__(self) -> None:
         self.root = Root(self)
 
-    def __call__(self, x):
+    def __call__(self, x: "Node") -> "Node":
         self.root.connect_child(x)
         return x
 
-    def _add_node(self, G: nx.DiGraph, node: Node):
-        G.add_node(node)
+    def _add_node(self, g: nx.DiGraph, node: Node) -> None:
+        g.add_node(node)
 
         for child in node.children:
-            self._add_node(G, child)
-            G.add_edge(node, child)
+            self._add_node(g, child)
+            g.add_edge(node, child)
 
-    def create_graph(self):
-        G = nx.DiGraph()
+    def create_graph(self) -> nx.DiGraph:
+        g = nx.DiGraph()
 
         for child in self.root.children:
-            self._add_node(G, child)
-        return G
+            self._add_node(g, child)
 
-    def plot_graph(self):
-        G = self.create_graph()
-        gp = nx.drawing.nx_pydot.to_pydot(G)
+        return g
+
+    def plot_graph(self) -> bytes:
+        g = self.create_graph()
+        gp = nx.drawing.nx_pydot.to_pydot(g)
         gp.set_simplify(True)
         img = gp.create_png()
+
         return img
 
-    def is_unique_node(self, node):
-        G = self.create_graph()
+    def is_unique_node(self, node: Node) -> bool:
+        g = self.create_graph()
 
-        for n in G.nodes:
+        for n in g.nodes:
             if n.name == node.name:
                 if n is not node:
                     return False
         return True
 
-    def assert_unique_nodes(self):
+    def assert_unique_nodes(self) -> None:
         g = self.create_graph()
         cnt = Counter([node.name for node in g.nodes])
         multiple = [k for k in cnt if cnt[k] > 1]
@@ -99,7 +101,7 @@ class DAG:
                 f"Node names must be unique - multiple nodes with the same name found: {multiple}"
             )
 
-    def assert_acyclic(self):
+    def assert_acyclic(self) -> None:
         g = self.create_graph()
         if not nx.is_directed_acyclic_graph(g):
             cycle = nx.find_cycle(g)

@@ -1,19 +1,18 @@
 # -*- coding: utf-8 -*-
 
 import os
+from typing import List
+
 from setuptools import setup, find_packages
 
+from pyperunner.version import __version__
 
-def read(fname):
+
+def read(fname: str) -> str:
     return open(os.path.join(os.path.dirname(__file__), fname)).read()
 
 
-exec(open("pyperunner/version.py").read())
-readme = read("README.rst")
-changes = read("CHANGELOG.rst")
-
-
-def parse_requirements(filename):
+def parse_requirements(filename: str) -> List[str]:
     """ Load requirements from a pip requirements file """
     with open(filename, "r") as fd:
         lines = []
@@ -24,9 +23,12 @@ def parse_requirements(filename):
     return lines
 
 
-requirements = parse_requirements("requirements.txt")
-
 if __name__ == "__main__":
+    readme = read("README.rst")
+    changes = read("CHANGELOG.rst")
+
+    requirements = parse_requirements("requirements.txt")
+
     setup(
         name="pyperunner",
         description="Yet another ETL pipeline runner for python, using multiprocessing and directed acyclic graphs.",

@@ -1,19 +1,19 @@
 import inspect
 from functools import wraps
-from typing import Any
+from typing import Any, Callable
 
 from pyperunner import Task
 
 
-def task(class_name, receives_input=True):
-    def decorator(func):
+def task(class_name: str, receives_input: bool = True) -> Callable:
+    def decorator(func: Callable) -> Callable:
         if receives_input:
-            if not "data" in inspect.getfullargspec(func).args:
+            if "data" not in inspect.getfullargspec(func).args:
                 raise AttributeError(
                     'To receive input data, the function must accept the named parameter "data"'
                 )
 
-        def wrapper(self: Task, input):
+        def wrapper(self: Task, input: Any) -> Task.TaskResult:
             return self.run_wrapper(
                 func, input, static=True, receives_input=receives_input
             )
@@ -23,9 +23,9 @@ def task(class_name, receives_input=True):
     return decorator
 
 
-def run(func):
+def run(func: Callable) -> Callable:
     @wraps(func)
-    def wrapper(self: Task, input: Any):
+    def wrapper(self: Task, input: Any) -> Task.TaskResult:
         return self.run_wrapper(func, input)
 
     return wrapper

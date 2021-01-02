@@ -1,7 +1,7 @@
 import logging
 from datetime import datetime
 from queue import Empty
-from typing import List, Set
+from typing import List, Set, Any, Union, Dict
 import os
 import sys
 import multiprocessing
@@ -22,7 +22,7 @@ class Process(multiprocessing.Process):
         self.queue = queue
         self.logger = logging.getLogger(task.name)
 
-    def _get_input(self):
+    def _get_input(self) -> Any:
         try:
             input = self.queue.get_nowait()
         except Empty:
@@ -30,11 +30,12 @@ class Process(multiprocessing.Process):
 
         return input
 
-    def run(self):
-        sys.stdout = StreamLogger(self.logger, logging.INFO)
-        sys.stderr = StreamLogger(self.logger, logging.ERROR)
+    def run(self) -> None:
+        sys.stdout = StreamLogger(self.logger, logging.INFO)  # type: ignore
+        sys.stderr = StreamLogger(self.logger, logging.ERROR)  # type: ignore
 
         input = self._get_input()
+
         try:
             self.task.run(input)
         except Exception as e:
@@ -45,16 +46,21 @@ class Process(multiprocessing.Process):
 
 
 class Runner:
-    def __init__(self, data_path, log_path, process_limit=multiprocessing.cpu_count()):
+    def __init__(
+        self,
+        data_path: str,
+        log_path: str,
+        process_limit: int = multiprocessing.cpu_count(),
+    ):
         self.tasks_finished: Set[Task] = set()
         self.tasks_error: Set[Task] = set()
         self.tasks_queue: List[Task] = []
         self.proc_running: List[Process] = []
 
-        self.process_limit: bool = process_limit
-        self.pipeline: Pipeline = None
-        self.G: nx.DiGraph = None
-        self.logger = None
+        self.process_limit: int = process_limit
+        self.pipeline: Pipeline
+        self.g: nx.DiGraph
+        self.logger: logging.Logger
 
         if not os.path.exists(data_path):
             os.makedirs(data_path)
@@ -63,11 +69,11 @@ class Runner:
         if not os.path.exists(log_path):
             os.makedirs(log_path)
         self.log_path: str = log_path
-        self.log_path_current_run = None
+        self.log_path_current_run: str = log_path
 
-    def dequeue(self):
+    def dequeue(self) -> Union[Task, None]:
         for task in self.tasks_queue:
-            predecessor_tasks = set(self.G.predecessors(task))
+            predecessor_tasks = set(self.g.predecessors(task))
             if predecessor_tasks & set(self.tasks_error):
                 # this task cannot be run anymore as at least on predecessor failed
                 task.set_status(Task.Status.CANT_RUN)
@@ -78,22 +84,26 @@ class Runner:
             if predecessor_tasks.issubset(self.tasks_finished):
                 self.tasks_queue.remove(task)
                 return task
+        return None
 
-    def get_predecessor_outputs(self, task):
-        return {str(pt): pt.output for pt in self.G.predecessors(task)}
+    def get_predecessor_outputs(self, task: Task) -> Dict[str, Task]:
+        return {str(pt): pt.output for pt in self.g.predecessors(task)}
 
-    def start_task(self, task: Task, force_reload: bool):
-        queue = multiprocessing.Queue()
+    def start_task(self, task: Task, force_reload: bool) -> Process:
+        queue: multiprocessing.Queue = multiprocessing.Queue()
         queue.put(self.get_predecessor_outputs(task))
         task.set_data_path(self.data_path)
+
         if force_reload:
             task.set_reload(force_reload)
+
         proc = Process(task, queue)
         proc.start()
         task.set_status(Task.Status.RUNNING)
+
         return proc
 
-    def finish_tasks(self):
+    def finish_tasks(self) -> None:
         for proc in self.proc_running:
             if proc.is_alive():
                 continue
@@ -108,7 +118,6 @@ class Runner:
                     status=Task.Status.FAILURE,
                     output=None,
                     exception=Exception("Unknown error"),
-                    traceback=None,
                 )
 
             task.set_status(result.status)
@@ -120,35 +129,36 @@ class Runner:
                 self.tasks_error.add(task)
                 self.log_exception(result)
 
-    def log_exception(self, result: Task.TaskResult):
+    def log_exception(self, result: Task.TaskResult) -> None:
         filename = os.path.join(self.log_path_current_run, "exception.log")
         with open(filename, "a") as f:
             f.write(result.traceback)
             f.write("\n")
 
-    def validate_pipeline(self, pipeline: Pipeline):
+    @staticmethod
+    def validate_pipeline(pipeline: Pipeline) -> None:
         pipeline.assert_unique_nodes()
         pipeline.assert_acyclic()
 
-    def set_pipeline(self, pipeline: Pipeline):
+    def set_pipeline(self, pipeline: Pipeline) -> None:
         self.pipeline = pipeline
-        self.G = pipeline.create_graph()
+        self.g = pipeline.create_graph()
 
-    def write_status_image(self, fname="status.png"):
+    def write_status_image(self, fname: str = "status.png") -> None:
         img = self.pipeline.plot_graph()
         path = os.path.join(self.log_path_current_run, fname)
         with open(path, "wb") as f:
             f.write(img)
 
-    def generate_run_name(self):
+    def generate_run_name(self) -> str:
         dtstr = datetime.now().strftime("%y%m%dT%H%M%S")
         return self.pipeline.name + "_" + dtstr
 
-    def run(self, pipeline, force_reload=False):
+    def run(self, pipeline: Pipeline, force_reload: bool = False) -> None:
 
         self.validate_pipeline(pipeline)
         self.set_pipeline(pipeline)
-        self.tasks_queue = list(nx.topological_sort(self.G))
+        self.tasks_queue = list(nx.topological_sort(self.g))
 
         run_name = self.generate_run_name()
         self.log_path_current_run = os.path.join(self.log_path, run_name)

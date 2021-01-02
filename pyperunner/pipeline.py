@@ -3,10 +3,9 @@ import traceback
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from enum import Enum
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Callable, Union, Iterator, Type, Optional
 import os
 import joblib
-from functools import wraps
 import json
 import hashlib
 import pydot
@@ -17,7 +16,7 @@ import importlib
 from .dag import Node, DAG
 
 
-def get_exception_str(exc: BaseException):
+def get_exception_str(exc: BaseException) -> str:
     s = traceback.format_exception(etype=None, value=exc, tb=exc.__traceback__)
     return "".join(s)
 
@@ -35,22 +34,22 @@ class Task(Node, ABC):
 
         status: "Task.Status"
         output: Any
-        exception: Exception
-        traceback: str
+        exception: Optional[Exception] = None
+        traceback: str = ""
 
-    def __init__(self, tag="", reload=False, **kwargs):
+    def __init__(self, tag: str = "", reload: bool = False, **kwargs: Dict) -> None:
         super().__init__(self.__class__.__name__ + f"({tag})")
         self.tag = tag
         self.task_name = self.__class__.__name__
         self.params: Dict = kwargs
-        self.data_path: str = None
+        self.data_path: str
         self.output: Any = None
         self.status: Task.Status = Task.Status.NOT_STARTED
-        self.result: Task.TaskResult = None
+        self.result: Optional[Task.TaskResult] = None
         self.reload: bool = reload
         self.logger = logging.getLogger(self.name)
 
-    def _single_node_hash(self):
+    def _single_node_hash(self) -> str:
         s = json.dumps(
             {
                 "class": self.__class__.__name__,
@@ -59,10 +58,10 @@ class Task(Node, ABC):
             },
             sort_keys=True,
         )
-        s = s.encode("utf-8")
-        return hashlib.md5(s).hexdigest()
 
-    def _hash(self):
+        return hashlib.md5(s.encode("utf-8")).hexdigest()
+
+    def _hash(self) -> List[str]:
         hash = [self._single_node_hash() + "_" + self.name]
 
         for parent in self._parents_generator():
@@ -70,10 +69,10 @@ class Task(Node, ABC):
 
         return sorted(hash)
 
-    def hash(self):
+    def hash(self) -> str:
         return hashlib.md5("/".join(self._hash()).encode("utf-8")).hexdigest()
 
-    def description(self):
+    def description(self) -> Dict[str, Union[str, Dict, List]]:
         return {
             "name": self.task_name,
             "module": self.__module__,
@@ -83,10 +82,16 @@ class Task(Node, ABC):
         }
 
     @abstractmethod
-    def run(self):
+    def run(self, *args: List, **kwargs: Dict) -> None:
         pass
 
-    def run_wrapper(self, func, input, static=False, receives_input=True):
+    def run_wrapper(
+        self,
+        func: Callable,
+        input: Any,
+        static: bool = False,
+        receives_input: bool = True,
+    ) -> TaskResult:
         self.logger.info("Starting")
 
         if self.output_exists() and not self.reload:
@@ -116,45 +121,45 @@ class Task(Node, ABC):
 
                 raise e
 
-        self.result = Task.TaskResult(
-            status=Task.Status.SUCCESS, output=output, exception=None, traceback=None,
-        )
+        self.result = Task.TaskResult(status=Task.Status.SUCCESS, output=output)
 
         self.logger.info(f"Finished: {self.result.status}")
 
         return self.result
 
-    def _parents_generator(self):
+    def _parents_generator(self) -> Iterator["Task"]:
         for p in self.parents:
             if isinstance(p, Task):
                 yield p
 
-    def set_data_path(self, path: str):
+    def set_data_path(self, path: str) -> None:
         self.data_path = path
 
-    def set_output(self, output: Any):
+    def set_output(self, output: Any) -> None:
         self.output = output
 
-    def set_status(self, status: "Task.Status"):
+    def set_status(self, status: "Task.Status") -> None:
         self.status = status
 
-    def set_reload(self, reload: bool):
+    def set_reload(self, reload: bool) -> None:
         self.reload = reload
 
-    def output_filename(self, filename="result.dump.gz"):
+    def output_filename(self, filename: str = "result.dump.gz") -> str:
         path = os.path.realpath(os.path.join(self.data_path, self.name, self.hash()))
+
         if not os.path.exists(path):
             os.makedirs(path)
+
         return os.path.join(path, filename)
 
-    def output_exists(self):
+    def output_exists(self) -> bool:
         return os.path.exists(self.output_filename())
 
-    def store_output(self, output):
+    def store_output(self, output: Any) -> None:
         filename = self.output_filename()
         joblib.dump(output, filename)
 
-    def _build_caller_dict(self):
+    def _build_caller_dict(self) -> Dict:
         params = {
             "task": self.description(),
             "parents": {
@@ -165,7 +170,7 @@ class Task(Node, ABC):
 
         return params
 
-    def store_params(self):
+    def store_params(self) -> None:
         filename = self.output_filename("params.yaml")
 
         params = self._build_caller_dict()
@@ -173,11 +178,11 @@ class Task(Node, ABC):
         with open(filename, "w") as f:
             yaml.dump(params, f, default_flow_style=False)
 
-    def load_output(self):
+    def load_output(self) -> Any:
         filename = self.output_filename()
         return joblib.load(filename)
 
-    def __str__(self):
+    def __str__(self) -> str:
         return f"{self.task_name}({self.tag})#{self.hash()}#{hash(self)}"
 
 
@@ -190,33 +195,33 @@ class Pipeline(DAG):
         Task.Status.CANT_RUN: "gray",
     }
 
-    def __init__(self, name, tasks: List[Task] = None):
+    def __init__(self, name: str, tasks: List[Task] = None):
         super().__init__()
         self.name = name
 
         if tasks is not None:
             self.set_tasks(tasks)
 
-    def set_tasks(self, tasks: List[Task]):
+    def set_tasks(self, tasks: List[Task]) -> None:
         for task in tasks:
             self.root.connect_child(task)
 
-    def add(self, task: Task):
+    def add(self, task: Task) -> None:
         self.root.connect_child(task)
 
-    def _add_node(self, G, node: Task):
+    def _add_node(self, g: nx.DiGraph, node: Task) -> None:  # type: ignore[override]
         child: Task
 
-        G.add_node(
+        g.add_node(
             node, style="filled", fillcolor=self.colormap[node.status], label=node.name
         )
 
-        for child in node.children:
-            if not G.has_node(child):
-                self._add_node(G, child)
-            G.add_edge(node, child)
+        for child in node.children:  # type: ignore
+            if not g.has_node(child):
+                self._add_node(g, child)
+            g.add_edge(node, child)
 
-    def to_dict(self):
+    def to_dict(self) -> Dict:
         g = self.create_graph()
         tasks = {}
         node: Task
@@ -230,8 +235,10 @@ class Pipeline(DAG):
         return pipeline_dict
 
     @staticmethod
-    def __instantiate_task(class_name: str, module_name: str, tag: str, params: Dict):
-        def get_class(class_name, module_name=None):
+    def __instantiate_task(
+        class_name: str, module_name: str, tag: str, params: Dict
+    ) -> Task:
+        def get_class(class_name: str, module_name: str = None) -> Type:
 
             if module_name is None:
                 module_name = "__main__"
@@ -255,7 +262,7 @@ class Pipeline(DAG):
         return task
 
     @staticmethod
-    def __instantiate_tasks(tasks_dict):
+    def __instantiate_tasks(tasks_dict: Dict) -> Dict:
         tasks = {}
         for task_name, desc in tasks_dict.items():
             task = Pipeline.__instantiate_task(
@@ -267,9 +274,9 @@ class Pipeline(DAG):
             tasks[task_name] = task
         return tasks
 
-    def __compare_hashes(self, tasks_dict):
-        G = self.create_graph()
-        for task in G.nodes:
+    def __compare_hashes(self, tasks_dict: Dict) -> None:
+        g = self.create_graph()
+        for task in g.nodes:
             if "hash" not in tasks_dict[task.name]:
                 continue
             if not tasks_dict[task.name]["hash"] == task.hash():
@@ -277,14 +284,16 @@ class Pipeline(DAG):
                     "Cannot create pipeline from file: Hashes do not match"
                 )
 
-    def __connect_tasks(self, tasks, tasks_dict):
-        G = nx.DiGraph()
-        for task_name, desc in tasks_dict.items():
-            G.add_node(task_name)
-            for parent_task_name in desc["parents"]:
-                G.add_edge(parent_task_name, task_name)
+    def __connect_tasks(self, tasks: Dict, tasks_dict: Dict) -> None:
 
-        for task_name in nx.topological_sort(G):
+        g = nx.DiGraph()
+
+        for task_name, desc in tasks_dict.items():
+            g.add_node(task_name)
+            for parent_task_name in desc["parents"]:
+                g.add_edge(parent_task_name, task_name)
+
+        for task_name in nx.topological_sort(g):
             if not tasks_dict[task_name]["parents"]:
                 self(tasks[task_name])
             else:
@@ -292,7 +301,7 @@ class Pipeline(DAG):
                     tasks[parent_task_name](tasks[task_name])
 
     @staticmethod
-    def from_dict(pipeline_dict, compare_hashes=True):
+    def from_dict(pipeline_dict: Dict, compare_hashes: bool = True) -> "Pipeline":
 
         tasks_dict = pipeline_dict["tasks"]
         pipeline = Pipeline(**pipeline_dict["pipeline"])
@@ -305,26 +314,26 @@ class Pipeline(DAG):
 
         return pipeline
 
-    def to_file(self, filename):
+    def to_file(self, filename: str) -> None:
         with open(filename, "w") as f:
             yaml.dump(self.to_dict(), f)
 
     @staticmethod
-    def from_file(filename, compare_hashes=True):
+    def from_file(filename: str, compare_hashes: bool = True) -> "Pipeline":
         with open(filename, "r") as f:
             pipeline_dict = yaml.load(f, Loader=yaml.FullLoader)
         return Pipeline.from_dict(pipeline_dict, compare_hashes=compare_hashes)
 
 
 class Sequential(Pipeline):
-    def set_tasks(self, tasks: List[Task]):
-        prev_task = self.root
+    def set_tasks(self, tasks: List[Task]) -> None:
+        prev_task: Node = self.root
         for task in tasks:
             prev_task.connect_child(task)
             prev_task = task
 
-    def add(self, task: Task):
-        cur = self.root
+    def add(self, task: Task) -> None:
+        cur: Node = self.root
         while cur.children:
             cur = cur.children[0]
         cur.connect_child(task)
