@@ -1,12 +1,14 @@
+from typing import List
+
 import networkx as nx
-import hashlib
 
 
 class Node:
     def __init__(self, name):
-        self.name = name
-        self.children = []
-        self.parents = []
+        self.name: str = name
+        self.children: List[Node] = []
+        self.parents: List[Node] = []
+        self.dag: DAG = None
 
     def add_child(self, other):
         self.children.append(other)
@@ -14,11 +16,15 @@ class Node:
     def add_parent(self, other):
         self.parents.append(other)
 
-    def __call__(self, x):
-        self.add_child(x)
-        x.add_parent(self)
+    def __call__(self, node: "Node"):
+        if not self.dag.is_unique_node(node):
+            raise ValueError(f"Node names must be unique, '{node.name}' already exists")
+        self.add_child(node)
+        node.add_parent(self)
 
-        return x
+        node.dag = self.dag
+
+        return node
 
     def __str__(self):
         return self.name
@@ -26,7 +32,7 @@ class Node:
 
 class DAG:
     def __init__(self):
-        self.root = Root()
+        self.root = Root(self)
 
     def __call__(self, x):
         self.root(x)
@@ -53,10 +59,17 @@ class DAG:
         img = gp.create_png()
         return img
 
+    def is_unique_node(self, node):
+        G = self.create_graph()
+
+        for n in G.nodes:
+            if n.name == node.name:
+                if n is not node:
+                    return False
+        return True
+
 
 class Root(Node):
-    def __init__(self):
+    def __init__(self, dag: DAG):
         super().__init__("root")
-
-    def _hash(self):
-        return [hashlib.md5("root".encode("utf-8")).hexdigest()]
+        self.dag = dag

@@ -1,3 +1,4 @@
+import logging
 from datetime import datetime
 from queue import Empty
 from typing import List, Set
@@ -7,17 +8,17 @@ import multiprocessing
 import time
 
 # inspired by https://github.com/ecdavis/multiprocessing_dag
-
+from .logger import init_logger
 from ..pipeline import Task, Pipeline
 
 
 class Process(multiprocessing.Process):
     def __init__(self, task: Task, queue: multiprocessing.Queue):
-        super().__init__()  # name=f"task-{task.uri()}")  # TODO don't use uri
+        super().__init__()
 
         self.task = task
         self.queue = queue
-        # self.logger = logging.getLogger(task.uri())  # TODO uri?
+        self.logger = logging.getLogger(task.name)
 
     def _get_input(self):
         try:
@@ -48,6 +49,7 @@ class Runner:
         self.process_limit: bool = process_limit
         self.pipeline: Pipeline = None
         self.G: nx.DiGraph = None
+        self.logger = None
 
         if not os.path.exists(data_path):
             os.makedirs(data_path)
@@ -56,6 +58,7 @@ class Runner:
         if not os.path.exists(log_path):
             os.makedirs(log_path)
         self.log_path: str = log_path
+        self.log_path_current_run = None
 
     def dequeue(self):
         for task in self.tasks_queue:
@@ -64,6 +67,9 @@ class Runner:
                 # this task cannot be run anymore as at least on predecessor failed
                 task.set_status(Task.Status.CANT_RUN)
                 self.tasks_queue.remove(task)
+                self.tasks_error.add(
+                    task
+                )  # required to pass unreachability further upstream
             if predecessor_tasks.issubset(self.tasks_finished):
                 self.tasks_queue.remove(task)
                 return task
@@ -71,10 +77,12 @@ class Runner:
     def get_predecessor_outputs(self, task):
         return {str(pt): pt.output for pt in self.G.predecessors(task)}
 
-    def start_task(self, task):
+    def start_task(self, task: Task, force_reload: bool):
         queue = multiprocessing.Queue()
         queue.put(self.get_predecessor_outputs(task))
         task.set_data_path(self.data_path)
+        if force_reload:
+            task.set_reload(force_reload)
         proc = Process(task, queue)
         proc.start()
         task.set_status(Task.Status.RUNNING)
@@ -105,41 +113,49 @@ class Runner:
                 self.tasks_finished.add(task)
             else:
                 self.tasks_error.add(task)
-                # raise result.exception
+                self.log_exception(result)
 
-            # self.status_image(f"{self.data_path}/img/status-{time.time()}.png")
+    def log_exception(self, result: Task.TaskResult):
+        filename = os.path.join(self.log_path_current_run, "exception.log")
+        with open(filename, "a") as f:
+            f.write(result.traceback)
+            f.write("\n")
 
     def set_pipeline(self, pipeline: Pipeline):
         self.pipeline = pipeline
         self.G = pipeline.create_graph()
 
-    def status_image(self, fname):
+    def write_status_image(self, fname="status.png"):
         img = self.pipeline.plot_graph()
-        with open(fname, "wb") as f:
+        path = os.path.join(self.log_path_current_run, fname)
+        with open(path, "wb") as f:
             f.write(img)
 
     def generate_run_name(self):
         dtstr = datetime.now().strftime("%y%m%dT%H%M%S")
         return self.pipeline.name + "_" + dtstr
 
-    def run(self, pipeline):
+    def run(self, pipeline, force_reload=False):
 
         self.set_pipeline(pipeline)
         self.tasks_queue = list(nx.topological_sort(self.G))
 
         run_name = self.generate_run_name()
-        output_path = os.path.join(self.log_path, run_name)
-        os.mkdir(output_path)
+        self.log_path_current_run = os.path.join(self.log_path, run_name)
+        os.mkdir(self.log_path_current_run)
+
+        pipeline.to_file(os.path.join(self.log_path_current_run, "pipeline.yaml"))
+        self.logger = init_logger(log_path=self.log_path_current_run)
 
         while len(self.tasks_queue) > 0 or len(self.proc_running) > 0:
             if len(self.proc_running) < self.process_limit:
                 task = self.dequeue()
                 if task is not None:
-                    proc = self.start_task(task)
+                    proc = self.start_task(task, force_reload)
                     self.proc_running.append(proc)
 
             self.finish_tasks()
 
             time.sleep(0.01)
 
-        self.status_image(f"{output_path}/status.png")
+        self.write_status_image()
