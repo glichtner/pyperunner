@@ -38,8 +38,7 @@ if __name__ == "__main__":
         maintainer="Gregor Lichtner",
         install_requires=requirements,
         keywords=["pyperunner"],
-        package_dir={"": "pyperunner"},
-        packages=find_packages("pyperunner"),
+        packages=find_packages("."),
         zip_safe=False,
         classifiers=[
             "Development Status :: 3 - Alpha",
