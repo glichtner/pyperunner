@@ -23,7 +23,7 @@ PypeRunner
 Yet another ETL pipeline runner for pure python, using multiprocessing and directed acyclic graphs.
 
 Features
---------
+========
 
 - Parallel processing of steps
 - Caching of previously run steps to speed up processing
@@ -32,9 +32,9 @@ Features
 - Save & read pipelines to/from yaml
 - Graphical output of pipeline run
 
-
 Installation
 ============
+
 Install from pip via
 
 .. code-block:: bash
@@ -52,6 +52,7 @@ Or from source via
 
 Quickstart
 ==========
+
 Pyperunner has three basic components:
 
 * **Task**: Definition of the work to do (Python classes or functions)
@@ -144,5 +145,7 @@ Additionally, a graphical representation of the run is saved in the log path:
    :alt: Hello World pipeline status
    :align: center
 
+Documentation
+=============
 
 The `API Reference <http://pyperunner.readthedocs.io>`_ provides API-level documentation.
