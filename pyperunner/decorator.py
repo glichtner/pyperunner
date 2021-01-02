@@ -5,7 +5,7 @@ from typing import Any
 from pyperunner import Task
 
 
-def task(class_name, receives_input=False):
+def task(class_name, receives_input=True):
     def decorator(func):
         if receives_input:
             if not "data" in inspect.getfullargspec(func).args:

@@ -3,13 +3,14 @@ from datetime import datetime
 from queue import Empty
 from typing import List, Set
 import os
+import sys
 import multiprocessing
 import time
 
 import networkx as nx
 
 # inspired by https://github.com/ecdavis/multiprocessing_dag
-from .logger import init_logger
+from .logger import init_logger, StreamLogger
 from ..pipeline import Task, Pipeline
 
 
@@ -30,6 +31,9 @@ class Process(multiprocessing.Process):
         return input
 
     def run(self):
+        sys.stdout = StreamLogger(self.logger, logging.INFO)
+        sys.stderr = StreamLogger(self.logger, logging.ERROR)
+
         input = self._get_input()
         try:
             self.task.run(input)

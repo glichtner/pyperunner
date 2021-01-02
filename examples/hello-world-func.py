@@ -3,11 +3,13 @@ from pyperunner import Runner, Sequential, task
 
 @task("Hello", receives_input=False)
 def hello():
+    print("in hello()")
     return "Hello"
 
 
 @task("World")
 def world(data):
+    print("in world()")
     return f"{data} world"
 
 
@@ -16,4 +18,4 @@ pipeline = Sequential("hello-world-example", [hello(), world()])
 
 # run pipeline
 runner = Runner(data_path="data/", log_path="log/")
-runner.run(pipeline)
+runner.run(pipeline, force_reload=True)

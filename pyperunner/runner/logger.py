@@ -43,3 +43,17 @@ def init_logger(log_path=None, log_format=None, log_level=logging.INFO):
     logging.captureWarnings(True)
 
     return logger
+
+
+class StreamLogger:
+    def __init__(self, logger, level):
+        self.logger = logger
+        self.level = level
+        self.linebuf = ""
+
+    def write(self, buf):
+        for line in buf.rstrip().splitlines():
+            self.logger.log(self.level, line.rstrip())
+
+    def flush(self):
+        pass
