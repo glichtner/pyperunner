@@ -1,0 +1,5 @@
+joblib==0.17.0
+coloredlogs==15.0
+networkx==2.5
+pydot==1.4.1
+PyYAML==5.3.1

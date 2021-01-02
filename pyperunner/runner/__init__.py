@@ -3,9 +3,10 @@ from datetime import datetime
 from queue import Empty
 from typing import List, Set
 import os
-import networkx as nx
 import multiprocessing
 import time
+
+import networkx as nx
 
 # inspired by https://github.com/ecdavis/multiprocessing_dag
 from .logger import init_logger
