@@ -28,7 +28,7 @@ Features
 - Parallel processing of steps
 - Caching of previously run steps to speed up processing
 - Re-run of steps (and all subsequent steps) when parameters are changed
-- Easy creation of pipelines using call syntax (see below)
+- Easy creation of pipelines using functional API chaining (see below)
 - Save & read pipelines to/from yaml
 - Graphical output of pipeline run
 
@@ -78,18 +78,17 @@ Hello world example
             return f"{data} world"
 
 
-    # instantiate a new pipeline
-    pipeline = Pipeline("hello-world-example")
-
-    # instantiate tasks
+    # instantiate and connect tasks
     hello = Hello()
-    world = World()
+    world = World()(hello)
 
-    # connect tasks with pipeline
-    pipeline(hello(world))
+    # create pipeline and set root element
+    pipeline = Pipeline("hello-world-example", [hello])
 
+    # run pipeline
     runner = Runner(data_path="data/", log_path="log/")
     runner.run(pipeline)
+
 
 Running this script outputs the following:
 

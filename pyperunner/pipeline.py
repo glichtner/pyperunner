@@ -3,7 +3,7 @@ import traceback
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from enum import Enum
-from typing import Any, Dict
+from typing import Any, Dict, List
 import os
 import joblib
 from functools import wraps
@@ -190,9 +190,19 @@ class Pipeline(DAG):
         Task.Status.CANT_RUN: "gray",
     }
 
-    def __init__(self, name):
+    def __init__(self, name, tasks: List[Task] = None):
         super().__init__()
         self.name = name
+
+        if tasks is not None:
+            self.set_tasks(tasks)
+
+    def set_tasks(self, tasks: List[Task]):
+        for task in tasks:
+            self.root.connect_child(task)
+
+    def add(self, task: Task):
+        self.root.connect_child(task)
 
     def _add_node(self, G, node: Task):
         child: Task
@@ -304,3 +314,17 @@ class Pipeline(DAG):
         with open(filename, "r") as f:
             pipeline_dict = yaml.load(f, Loader=yaml.FullLoader)
         return Pipeline.from_dict(pipeline_dict, compare_hashes=compare_hashes)
+
+
+class Sequential(Pipeline):
+    def set_tasks(self, tasks: List[Task]):
+        prev_task = self.root
+        for task in tasks:
+            prev_task.connect_child(task)
+            prev_task = task
+
+    def add(self, task: Task):
+        cur = self.root
+        while cur.children:
+            cur = cur.children[0]
+        cur.connect_child(task)

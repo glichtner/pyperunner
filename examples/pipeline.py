@@ -3,44 +3,61 @@ from pyperunner import Runner, Task, Pipeline, run
 
 
 class WaitTask(Task):
+    """
+    Base class for tasks that just wait a given amount of seconds
+    to simulate some time-consuming tasks
+    """
+
     @run
     def run(self, data, wait, **kwargs):
         time.sleep(wait)
         return self.name
 
 
-class LoadDataTask(WaitTask):
+# Some class stubs as examples - in a real pipeline, these classes would have implemented run() functions.
+
+
+class LoadData(WaitTask):
     pass
 
 
-class ProcessDataTask(WaitTask):
+class ProcessData(WaitTask):
     pass
 
 
-class EvaluateDataTask(WaitTask):
+class AugmentData(WaitTask):
+    pass
+
+
+class Evaluate(WaitTask):
     pass
 
 
 if __name__ == "__main__":
-    p = Pipeline("my-pipeline")
-    d1 = LoadDataTask(
+    # Create pipeline
+    pipeline = Pipeline("my-pipeline")
+
+    # Create first stream of tasks: LoadData(csv) --> ProcessData(normalize-l2)
+    load_db = LoadData(
         "database",
         database={"host": "localhost", "username": "user", "password": "password"},
         wait=10,
     )
-    d2 = LoadDataTask("csv", filename="data.csv", wait=1)
+    norm_l2 = ProcessData("normalize-l2", norm="l2", axis=0, wait=1)(load_db)
 
-    p1 = ProcessDataTask("normalize-l2", norm="l2", axis=0, wait=1)
-    p2 = ProcessDataTask("normalize-l1", norm="l1", wait=1)
-    p3 = ProcessDataTask("augment", param="params3", wait=1)
-    e = EvaluateDataTask("both", wait=1)
+    # Create second stream of tasks: LoadData(csv) --> ProcessData(normalize-l1) --> AugmentData(augment)
+    load_csv = LoadData("csv", filename="data.csv", wait=1)
+    norm_l1 = ProcessData("normalize-l1", norm="l1", wait=1)(load_csv)
+    augment = AugmentData("augment", types=["rotate", "noise"], wait=1)(norm_l1)
 
-    # stream 1
-    p(d1(p1(e)))
+    # Combine outputs of both streams (ProcessData(normalize-l2) and AugmentData(augment)),
+    # additionally add output from ProcessData(normalize-l1)
+    evaluate = Evaluate("both", wait=1)([norm_l1, norm_l2, augment])
 
-    # stream 2
-    p(d2(p2(p3(e))))
-    p2(e)
+    # Add the roots of both streams to the pipeline
+    pipeline.add(load_db)
+    pipeline.add(load_csv)
 
+    # Run pipeline
     runner = Runner(data_path="data/", log_path="log/")
-    runner.run(p, force_reload=False)
+    runner.run(pipeline, force_reload=False)

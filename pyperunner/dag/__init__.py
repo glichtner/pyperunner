@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Union
 from collections import Counter
 import networkx as nx
 
@@ -10,17 +10,38 @@ class Node:
         self.parents: List[Node] = []
         self.dag: DAG = None
 
-    def add_child(self, other):
+    def _add_child(self, other):
         self.children.append(other)
 
-    def add_parent(self, other):
+    def _add_parent(self, other):
         self.parents.append(other)
 
-    def __call__(self, node: "Node"):
+    def __call__(self, node: Union["Node", List["Node"]]):
+        if not type(node) == list:
+            node = [node]
+
+        for n in node:
+            self.connect_parent(n)
+
+        return self
+
+    def connect_child(self, node: "Node"):
+        return self.connect(node, as_child=True)
+
+    def connect_parent(self, node: "Node"):
+        return self.connect(node, as_child=False)
+
+    def connect(self, node: "Node", as_child: bool):
         if self.dag is not None and not self.dag.is_unique_node(node):
             raise ValueError(f"Node names must be unique, '{node.name}' already exists")
-        self.add_child(node)
-        node.add_parent(self)
+
+        if as_child:
+            parent, child = self, node
+        else:
+            parent, child = node, self
+
+        child._add_parent(parent)
+        parent._add_child(child)
 
         node.dag = self.dag
 
@@ -35,7 +56,7 @@ class DAG:
         self.root = Root(self)
 
     def __call__(self, x):
-        self.root(x)
+        self.root.connect_child(x)
         return x
 
     def _add_node(self, G: nx.DiGraph, node: Node):

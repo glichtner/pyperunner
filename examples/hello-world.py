@@ -13,15 +13,13 @@ class World(Task):
         return f"{data} world"
 
 
-# instantiate a new pipeline
-pipeline = Pipeline("hello-world-example")
-
-# instantiate tasks
+# instantiate and connect tasks
 hello = Hello()
-world = World()
+world = World()(hello)
 
-# connect tasks with pipeline
-pipeline(hello(world))
+# create pipeline and set root element
+pipeline = Pipeline("hello-world-example", [hello])
 
+# run pipeline
 runner = Runner(data_path="data/", log_path="log/")
 runner.run(pipeline)
