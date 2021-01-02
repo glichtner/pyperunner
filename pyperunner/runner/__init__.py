@@ -122,6 +122,10 @@ class Runner:
             f.write(result.traceback)
             f.write("\n")
 
+    def validate_pipeline(self, pipeline: Pipeline):
+        pipeline.assert_unique_nodes()
+        pipeline.assert_acyclic()
+
     def set_pipeline(self, pipeline: Pipeline):
         self.pipeline = pipeline
         self.G = pipeline.create_graph()
@@ -138,6 +142,7 @@ class Runner:
 
     def run(self, pipeline, force_reload=False):
 
+        self.validate_pipeline(pipeline)
         self.set_pipeline(pipeline)
         self.tasks_queue = list(nx.topological_sort(self.G))
 

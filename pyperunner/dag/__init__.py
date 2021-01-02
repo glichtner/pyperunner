@@ -1,5 +1,5 @@
 from typing import List
-
+from collections import Counter
 import networkx as nx
 
 
@@ -17,14 +17,14 @@ class Node:
         self.parents.append(other)
 
     def __call__(self, node: "Node"):
-        if not self.dag.is_unique_node(node):
+        if self.dag is not None and not self.dag.is_unique_node(node):
             raise ValueError(f"Node names must be unique, '{node.name}' already exists")
         self.add_child(node)
         node.add_parent(self)
 
         node.dag = self.dag
 
-        return node
+        return self
 
     def __str__(self):
         return self.name
@@ -67,6 +67,23 @@ class DAG:
                 if n is not node:
                     return False
         return True
+
+    def assert_unique_nodes(self):
+        g = self.create_graph()
+        cnt = Counter([node.name for node in g.nodes])
+        multiple = [k for k in cnt if cnt[k] > 1]
+
+        if multiple:
+            raise ValueError(
+                f"Node names must be unique - multiple nodes with the same name found: {multiple}"
+            )
+
+    def assert_acyclic(self):
+        g = self.create_graph()
+        if not nx.is_directed_acyclic_graph(g):
+            cycle = nx.find_cycle(g)
+            cycle = [(n0.name, n1.name) for n0, n1 in cycle]
+            raise ValueError(f"Graph is not acyclic, please remove cycle ({cycle})")
 
 
 class Root(Node):

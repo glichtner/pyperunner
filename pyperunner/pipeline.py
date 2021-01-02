@@ -38,7 +38,7 @@ class Task(Node, ABC):
         exception: Exception
         traceback: str
 
-    def __init__(self, tag, reload=False, **kwargs):
+    def __init__(self, tag="", reload=False, **kwargs):
         super().__init__(self.__class__.__name__ + f"({tag})")
         self.tag = tag
         self.task_name = self.__class__.__name__
@@ -202,7 +202,8 @@ class Pipeline(DAG):
         )
 
         for child in node.children:
-            self._add_node(G, child)
+            if not G.has_node(child):
+                self._add_node(G, child)
             G.add_edge(node, child)
 
     def to_dict(self):
