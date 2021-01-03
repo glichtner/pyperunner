@@ -64,43 +64,71 @@ Hello world example
 
 .. code-block:: python
 
-    from pyperunner import Runner, Pipeline, Task, run
+    from pyperunner import Runner, Pipeline, task
 
 
-    class Hello(Task):
-        @run
-        def run(self, data):
-            return "Hello"
+    @task("Hello", receives_input=False)
+    def hello():
+        print("in hello()")
+        return "Hello"
 
 
-    class World(Task):
-        @run
-        def run(self, data):
-            return f"{data} world"
+    @task("World")
+    def world(data):
+        hello = data["Hello()"]
+        print("in world()")
+        return f"{hello} world"
 
 
     # instantiate and connect tasks
-    hello = Hello()
-    world = World()(hello)
+    hello = hello()
+    world = world()(hello)
 
     # create pipeline and set root element
     pipeline = Pipeline("hello-world-example", [hello])
 
+    # print a summary of the pipeline
+    pipeline.summary()
+
     # run pipeline
     runner = Runner(data_path="data/", log_path="log/")
     runner.run(pipeline)
+
+    # get pipeline results object from the pipeline that was just run
+    results = runner.results()
+
+    # show the results
+    for task_name in results:
+        print(f"Output of task '{task_name}' was '{results[task_name]}'")
+
 
 
 Running this script outputs the following:
 
 .. code-block:: console
 
-    ~/pyperunner/examples$ python hello-world.py
+    ~/pyperunner/examples$ python hello-world-func.py
 
-    2021-01-02 18:58:20 INFO     Process-1    Hello()    Starting
-    2021-01-02 18:58:20 INFO     Process-1    Hello()    Finished: Status.SUCCESS
-    2021-01-02 18:58:20 INFO     Process-2    World()    Starting
-    2021-01-02 18:58:20 INFO     Process-2    World()    Finished: Status.SUCCESS
+    +---------+
+    | Hello() |
+    +---------+
+          *
+          *
+          *
+    +---------+
+    | World() |
+    +---------+
+
+    2021-01-03 19:03:39 INFO     Process-1    Hello()    Starting
+    2021-01-03 19:03:39 INFO     Process-1    Hello()    in hello()
+    2021-01-03 19:03:39 INFO     Process-1    Hello()    Finished: Status.SUCCESS
+    2021-01-03 19:03:39 INFO     Process-2    World()    Starting
+    2021-01-03 19:03:39 INFO     Process-2    World()    in world()
+    2021-01-03 19:03:39 INFO     Process-2    World()    Finished: Status.SUCCESS
+
+    Output of task 'Hello()' was 'Hello'
+    Output of task 'World()' was 'Hello world'
+
 
 Note that if you re-run the script, pyperunner will detect that the current configuration has already run and will use cached outputs:
 
@@ -108,12 +136,26 @@ Note that if you re-run the script, pyperunner will detect that the current conf
 
     ~/pyperunner/examples$ python hello-world.py
 
-    2021-01-02 19:01:28 INFO     Process-1    Hello()    Starting
-    2021-01-02 19:01:28 INFO     Process-1    Hello()    Loading output from disk, skipping processing
-    2021-01-02 19:01:28 INFO     Process-1    Hello()    Finished: Status.SUCCESS
-    2021-01-02 19:01:28 INFO     Process-2    World()    Starting
-    2021-01-02 19:01:28 INFO     Process-2    World()    Loading output from disk, skipping processing
-    2021-01-02 19:01:28 INFO     Process-2    World()    Finished: Status.SUCCESS
+    2021-01-03 19:05:03 INFO     Process-1    Hello()     Starting
+    2021-01-03 19:05:03 INFO     Process-1    Hello()     Loading output from disk, skipping processing
+    2021-01-03 19:05:03 INFO     Process-1    Hello()     Finished: Status.SUCCESS
+    2021-01-03 19:05:03 INFO     Process-2    World()     Starting
+    2021-01-03 19:05:03 INFO     Process-2    World()     Loading output from disk, skipping processing
+    2021-01-03 19:05:03 INFO     Process-2    World()     Finished: Status.SUCCESS
+
+If you need to reprocess outputs, just add the `force_reload=True` parameter to the pipeline run:
+
+.. code-block:: python
+
+    runner.run(pipeline, force_reload=True)
+
+Or to run just a specific task again, use the `reload=True` parameter when initializing the task:
+
+.. code-block:: python
+
+    # instantiate and connect tasks
+    hello = hello()
+    world = world(reload=True)(hello)
 
 At each run, the pipeline is automatically stored in a yaml file in the log path to ensure reproducibility:
 
@@ -149,3 +191,92 @@ Documentation
 =============
 
 The `API Reference <http://pyperunner.readthedocs.io>`_ provides API-level documentation.
+
+Examples
+========
+
+Look in the examples/ directory for some example scripts.
+
+Multiple paths pipeline
+-----------------------
+.. code-block:: python
+
+   # Create pipeline
+    pipeline = Pipeline("my-pipeline")
+
+    # Create first stream of tasks: LoadData(csv) --> ProcessData(normalize-l2)
+    load_db = LoadData(
+        "database",
+        database={"host": "localhost", "username": "user", "password": "password"},
+        wait=10,
+    )
+    norm_l2 = ProcessData("normalize-l2", norm="l2", axis=0, wait=1)(load_db)
+
+    # Create second stream of tasks:
+    #  LoadData(csv) --> ProcessData(normalize-l1) --> AugmentData(augment)
+    load_csv = LoadData("csv", filename="data.csv", wait=1)
+    norm_l1 = ProcessData("normalize-l1", norm="l1", wait=1)(load_csv)
+    augment = AugmentData("augment", types=["rotate", "noise"], wait=1)(norm_l1)
+
+    # Combine outputs of both streams (ProcessData(normalize-l2)
+    # and AugmentData(augment)), additionally add output from ProcessData(normalize-l1)
+    evaluate = Evaluate("both", wait=1)([norm_l1, norm_l2, augment])
+
+    # Add the roots of both streams to the pipeline
+    pipeline.add(load_db)
+    pipeline.add(load_csv)
+
+    # print a summary of the pipeline
+    pipeline.summary()
+
+    # Run pipeline
+    runner = Runner(data_path="data/", log_path="log/")
+    runner.run(pipeline, force_reload=False)
+
+`pipeline.summary()` prints the following ascii summary:
+
+.. code-block:: shell
+
+                                                                          +---------------+
+                                                                          | LoadData(csv) |
+                                                                          +---------------+
+                                                                                  *
+                                                                                  *
+                                                                                  *
+        +--------------------+                                      +---------------------------+
+        | LoadData(database) |                                      | ProcessData(normalize-l1) |
+        +--------------------+                                      +---------------------------+
+                  *                                                    ***                  ***
+                  *                                                ****                        ***
+                  *                                              **                               ****
+    +---------------------------+                 +----------------------+                          ****
+    | ProcessData(normalize-l2) |                 | AugmentData(augment) |                   *******
+    +---------------------------+****             +----------------------+            *******
+                                     *******                  *                *******
+                                            *******          *          *******
+                                                   ****      *      ****
+                                                    +----------------+
+                                                    | Evaluate(both) |
+                                                    +----------------+
+
+Notice how multiple tasks run simultaneously:
+
+.. code-block:: shell
+
+    2021-01-03 19:09:05 INFO     Process-1    LoadData(csv)                  Starting
+    2021-01-03 19:09:05 INFO     Process-2    LoadData(database)             Starting
+    2021-01-03 19:09:06 INFO     Process-1    LoadData(csv)                  Finished: Status.SUCCESS
+    2021-01-03 19:09:06 INFO     Process-3    ProcessData(normalize-l1)      Starting
+    2021-01-03 19:09:07 INFO     Process-3    ProcessData(normalize-l1)      Finished: Status.SUCCESS
+    2021-01-03 19:09:07 INFO     Process-4    AugmentData(augment)           Starting
+    2021-01-03 19:09:08 INFO     Process-4    AugmentData(augment)           Finished: Status.SUCCESS
+    2021-01-03 19:09:15 INFO     Process-2    LoadData(database)             Finished: Status.SUCCESS
+    2021-01-03 19:09:15 INFO     Process-5    ProcessData(normalize-l2)      Starting
+    2021-01-03 19:09:16 INFO     Process-5    ProcessData(normalize-l2)      Finished: Status.SUCCESS
+    2021-01-03 19:09:16 INFO     Process-6    Evaluate(both)                 Starting
+    2021-01-03 19:09:17 INFO     Process-6    Evaluate(both)                 Finished: Status.SUCCESS
+
+.. image:: examples/multi-path-status.png
+   :width: 20%
+   :alt: Multi path pipeline status
+   :align: center

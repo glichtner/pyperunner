@@ -36,7 +36,7 @@ def init_logger(
 
     if log_path is not None:
         add_handler(
-            logging.FileHandler(os.path.join(log_path, "pipeline.log")), logging.DEBUG,
+            logging.FileHandler(os.path.join(log_path, "pipeline.log")), log_level,
         )
 
     logging.captureWarnings(True)

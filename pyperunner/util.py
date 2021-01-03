@@ -45,8 +45,12 @@ class PipelineResult:
         else:
             self.data_path = data_path
 
-        for task in conf["tasks"]:
-            self.tasks[task] = TaskResult(task, data_path, conf["tasks"][task])
+        self.conf = conf
+
+        for task in self.conf["tasks"]:
+            self.tasks[task] = TaskResult(
+                task, self.data_path, self.conf["tasks"][task]
+            )
 
     def task_result(self, task: str) -> Any:
         return self.tasks[task].output()

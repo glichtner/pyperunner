@@ -206,7 +206,7 @@ class Runner:
         self.save_pipeline_params()
 
         self.logger = init_logger(
-            log_path=self.log_path_current_run, log_level=logging.DEBUG
+            log_path=self.log_path_current_run, log_level=logging.INFO
         )
 
         while len(self.tasks_queue) > 0 or len(self.proc_running) > 0:

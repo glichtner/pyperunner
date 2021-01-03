@@ -58,6 +58,9 @@ if __name__ == "__main__":
     pipeline.add(load_db)
     pipeline.add(load_csv)
 
+    # print a summary of the pipeline
+    pipeline.summary()
+
     # Run pipeline
     runner = Runner(data_path="data/", log_path="log/")
-    runner.run(pipeline, force_reload=False)
+    runner.run(pipeline)
