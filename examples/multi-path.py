@@ -52,7 +52,7 @@ if __name__ == "__main__":
 
     # Combine outputs of both streams (ProcessData(normalize-l2) and AugmentData(augment)),
     # additionally add output from ProcessData(normalize-l1)
-    evaluate = Evaluate("both", wait=1)([norm_l1, norm_l2, augment])
+    evaluate = Evaluate("both", wait=1)([norm_l2, augment])
 
     # Add the roots of both streams to the pipeline
     pipeline.add(load_db)

@@ -2,7 +2,7 @@ import gc
 import logging
 from datetime import datetime
 from queue import Empty
-from typing import List, Set, Any, Union, Dict
+from typing import List, Set, Any, Union, Dict, Generator, Callable
 import os
 import sys
 import multiprocessing
@@ -14,6 +14,7 @@ import networkx as nx
 from dask.tests.test_config import yaml
 
 from .logger import init_logger, StreamLogger
+from ..dag import draw
 from ..pipeline import Pipeline
 from ..util import PipelineResult
 from ..task import Task
@@ -52,6 +53,7 @@ class Runner:
         self.tasks_finished: Set[Task] = set()
         self.tasks_error: Set[Task] = set()
         self.tasks_queue: List[Task] = []
+        self.tasks_execute: List[Task] = []
         self.proc_running: List[Process] = []
 
         self.process_limit: int = process_limit
@@ -88,13 +90,10 @@ class Runner:
     def get_predecessor_outputs(self, task: Task) -> Dict[str, Task]:
         return {pt.name: pt.output for pt in self.g.predecessors(task)}
 
-    def start_task(self, task: Task, force_reload: bool) -> Process:
+    def start_task(self, task: Task) -> Process:
         queue_out: multiprocessing.Queue = multiprocessing.Queue()
 
         task.set_data_path(self.data_path)
-
-        if force_reload:
-            task.set_reload(force_reload)
 
         proc = Process(task, self.get_predecessor_outputs(task), queue_out)
         proc.start()
@@ -102,12 +101,15 @@ class Runner:
 
         return proc
 
-    def process_task_result(self, proc: Process, result: Task.TaskResult) -> None:
-        task = proc.task
+    def skip_task(self, task: Task) -> None:
+        result = Task.TaskResult(Task.Status.SKIPPED, output=None)
+        self.process_task_result(task, result)
+
+    def process_task_result(self, task: Task, result: Task.TaskResult) -> None:
         task.set_status(result.status)
         task.set_output(result.output)
 
-        if result.status == Task.Status.SUCCESS:
+        if result.status != Task.Status.FAILURE:
             self.tasks_finished.add(task)
         else:
             self.tasks_error.add(task)
@@ -132,7 +134,7 @@ class Runner:
                         status=Task.Status.FAILURE, output=None, exception=e,
                     )
                     self.logger.error(str(e))
-                    self.process_task_result(proc, result)
+                    self.process_task_result(proc.task, result)
                     continue
 
                 if proc.task.status != Task.Status.RUNNING:
@@ -151,7 +153,7 @@ class Runner:
                         exception=Exception("Unknown error"),
                     )
 
-            self.process_task_result(proc, result)
+            self.process_task_result(proc.task, result)
 
     def log_exception(self, result: Task.TaskResult) -> None:
         filename = os.path.join(self.log_path_current_run, "exception.log")
@@ -165,6 +167,7 @@ class Runner:
         pipeline.assert_acyclic()
 
     def set_pipeline(self, pipeline: Pipeline) -> None:
+        self.validate_pipeline(pipeline)
         self.pipeline = pipeline
         self.g = pipeline.create_graph()
 
@@ -193,31 +196,102 @@ class Runner:
     def results(self) -> PipelineResult:
         return PipelineResult.from_file(self.pipeline_params_filename())
 
-    def run(self, pipeline: Pipeline, force_reload: bool = False) -> None:
+    def _get_nodes_to_execute(self) -> Generator:
+        for node in nx.topological_sort(self.g):
+            if node.should_run() or any(
+                child.should_run() for child in self.g.successors(node)
+            ):
+                yield node
 
-        self.validate_pipeline(pipeline)
-        self.set_pipeline(pipeline)
+    def analyze_pipeline(self, force_reload: bool = False) -> None:
+        g = self.pipeline.create_graph()
+        for task in g.nodes:
+            task.set_data_path(self.data_path)
+
+        reload_nodes = [n for n in self.g.nodes if n.should_run() or force_reload]
+
+        def set_reload(node: Task) -> None:
+            node.reload = True
+            for s in self.g.successors(node):
+                set_reload(s)
+
+        for node in reload_nodes:
+            set_reload(node)
+
+    def queue_tasks(self, force_reload: bool = False) -> None:
+        self.analyze_pipeline(force_reload)
+        self.tasks_execute = list(self._get_nodes_to_execute())
         self.tasks_queue = list(nx.topological_sort(self.g))
+
+    def execution_plan_summary(self, print_fn: Callable = None) -> None:
+
+        self.queue_tasks()
+
+        def node_name(n: Task) -> str:
+            name = n.name
+            if n in self.tasks_execute:
+                name += "*"
+            return name
+
+        s = draw(
+            [node_name(n) for n in self.g.nodes],
+            [(node_name(t), node_name(s)) for s, t in self.g.edges],
+        )
+
+        if print_fn is None:
+            print_fn = print
+
+        print_fn(s)
+
+    def run(
+        self,
+        pipeline: Pipeline = None,
+        force_reload: bool = False,
+        show_execution_plan: bool = False,
+    ) -> None:
+
+        if pipeline is not None:
+            self.set_pipeline(pipeline)
+
+        if self.pipeline is None:
+            raise ValueError("No pipeline supplied")
+
+        self.queue_tasks(force_reload)
+
+        if show_execution_plan:
+            self.execution_plan_summary()
 
         run_name = self.generate_run_name()
         self.log_path_current_run = os.path.join(self.log_path, run_name)
         os.mkdir(self.log_path_current_run)
 
-        self.save_pipeline_params()
-
         self.logger = init_logger(
             log_path=self.log_path_current_run, log_level=logging.INFO
         )
+
+        self.save_pipeline_params()
+        self.logger.info(
+            f"Storing pipeline parameters in {self.pipeline_params_filename()}"
+        )
+        self.logger.info(f"Storing pipeline data in {self.data_path}")
 
         while len(self.tasks_queue) > 0 or len(self.proc_running) > 0:
             if len(self.proc_running) < self.process_limit:
                 task = self.dequeue()
                 if task is not None:
-                    proc = self.start_task(task, force_reload)
-                    self.proc_running.append(proc)
+
+                    if task not in self.tasks_execute:
+                        self.logger.info(
+                            f'No need to execute task "{task.name}", skipping it'
+                        )
+                        self.skip_task(task)
+                    else:
+                        proc = self.start_task(task)
+                        self.proc_running.append(proc)
 
             self.finish_tasks()
 
             time.sleep(0.01)
 
+        self.logger.info("Pipeline run finished")
         self.write_status_image()

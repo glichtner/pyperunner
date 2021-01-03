@@ -26,6 +26,7 @@ class Task(Node, ABC):
         SUCCESS = 1
         RUNNING = 2
         CANT_RUN = 3
+        SKIPPED = 4
 
     @dataclass
     class TaskResult:
@@ -80,6 +81,9 @@ class Task(Node, ABC):
             "hash": self.hash(),
             "params": self.params,
         }
+
+    def should_run(self) -> bool:
+        return not self.output_exists() or self.reload
 
     @abstractmethod
     def run(self, *args: List, **kwargs: Dict) -> None:

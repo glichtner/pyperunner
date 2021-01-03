@@ -119,29 +119,30 @@ Running this script outputs the following:
     | World() |
     +---------+
 
-    2021-01-03 19:03:39 INFO     Process-1    Hello()    Starting
-    2021-01-03 19:03:39 INFO     Process-1    Hello()    in hello()
-    2021-01-03 19:03:39 INFO     Process-1    Hello()    Finished: Status.SUCCESS
-    2021-01-03 19:03:39 INFO     Process-2    World()    Starting
-    2021-01-03 19:03:39 INFO     Process-2    World()    in world()
-    2021-01-03 19:03:39 INFO     Process-2    World()    Finished: Status.SUCCESS
+    2021-01-03 20:55:47 INFO     MainProcess  root       Storing pipeline parameters in examples/log/hello-world-example_210103T205547/pipeline.yaml
+    2021-01-03 20:55:47 INFO     MainProcess  root       Storing pipeline data in examples/data
+    2021-01-03 20:55:47 INFO     Process-1    Hello()    Starting
+    2021-01-03 20:55:47 INFO     Process-1    Hello()    in hello()
+    2021-01-03 20:55:47 INFO     Process-1    Hello()    Finished: Status.SUCCESS
+    2021-01-03 20:55:47 INFO     Process-2    World()    Starting
+    2021-01-03 20:55:47 INFO     Process-2    World()    in world()
+    2021-01-03 20:55:47 INFO     Process-2    World()    Finished: Status.SUCCESS
+    2021-01-03 20:55:47 INFO     MainProcess  root       Pipeline run finished
 
     Output of task 'Hello()' was 'Hello'
     Output of task 'World()' was 'Hello world'
 
 
-Note that if you re-run the script, pyperunner will detect that the current configuration has already run and will use cached outputs:
+Note that if you re-run the script, pyperunner will detect that the current configuration has already run and
+will skip the execution of these tasks:
 
 .. code-block:: console
 
     ~/pyperunner/examples$ python hello-world.py
 
-    2021-01-03 19:05:03 INFO     Process-1    Hello()     Starting
-    2021-01-03 19:05:03 INFO     Process-1    Hello()     Loading output from disk, skipping processing
-    2021-01-03 19:05:03 INFO     Process-1    Hello()     Finished: Status.SUCCESS
-    2021-01-03 19:05:03 INFO     Process-2    World()     Starting
-    2021-01-03 19:05:03 INFO     Process-2    World()     Loading output from disk, skipping processing
-    2021-01-03 19:05:03 INFO     Process-2    World()     Finished: Status.SUCCESS
+    2021-01-03 20:56:36 INFO     MainProcess  root       No need to execute task "Hello()", skipping it
+    2021-01-03 20:56:36 INFO     MainProcess  root       No need to execute task "World()", skipping it
+    2021-01-03 20:56:36 INFO     MainProcess  root       Pipeline run finished
 
 If you need to reprocess outputs, just add the `force_reload=True` parameter to the pipeline run:
 
@@ -156,6 +157,23 @@ Or to run just a specific task again, use the `reload=True` parameter when initi
     # instantiate and connect tasks
     hello = hello()
     world = world(reload=True)(hello)
+
+Note that pyperunner detects which tasks it must re-execute: All depending tasks of a reloaded task are automatically
+re-executed, and only those tasks are fully skipped from execution from which the output is not required in a successor
+task. Also, if a task has been previously executed and its output is required, it is read from disk.
+
+.. code-block:: console
+
+    ~/pyperunner/examples$ python hello-world.py
+
+    2021-01-03 20:57:26 INFO     Process-1    Hello()    Starting
+    2021-01-03 20:57:26 INFO     Process-1    Hello()    Loading output from disk, skipping processing
+    2021-01-03 20:57:26 INFO     Process-1    Hello()    Finished: Status.SUCCESS
+    2021-01-03 20:57:26 INFO     Process-2    World()    Starting
+    2021-01-03 20:57:26 INFO     Process-2    World()    in world()
+    2021-01-03 20:57:26 INFO     Process-2    World()    Finished: Status.SUCCESS
+    2021-01-03 20:57:26 INFO     MainProcess  root       Pipeline run finished
+
 
 At each run, the pipeline is automatically stored in a yaml file in the log path to ensure reproducibility:
 

@@ -14,6 +14,7 @@ class Pipeline(DAG):
         Task.Status.NOT_STARTED: "white",
         Task.Status.RUNNING: "yellow",
         Task.Status.CANT_RUN: "gray",
+        Task.Status.SKIPPED: "skyblue",
     }
 
     def __init__(self, name: str, tasks: List[Task] = None):
