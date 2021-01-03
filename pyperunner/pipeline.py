@@ -230,7 +230,7 @@ class Pipeline(DAG):
             desc["parents"] = [p.name for p in g.predecessors(node)]
             tasks[node.name] = desc
 
-        pipeline_dict = {"pipeline": {"name": self.name,}, "tasks": tasks}
+        pipeline_dict = {"pipeline": {"name": self.name}, "tasks": tasks}
 
         return pipeline_dict
 
@@ -321,7 +321,7 @@ class Pipeline(DAG):
     @staticmethod
     def from_file(filename: str, compare_hashes: bool = True) -> "Pipeline":
         with open(filename, "r") as f:
-            pipeline_dict = yaml.load(f, Loader=yaml.FullLoader)
+            pipeline_dict = yaml.safe_load(f)
         return Pipeline.from_dict(pipeline_dict, compare_hashes=compare_hashes)
 
 
