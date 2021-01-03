@@ -1,6 +1,7 @@
-from typing import List, Union, Optional
+from typing import List, Union, Optional, Callable
 from collections import Counter
 import networkx as nx
+from .dagascii import draw
 
 
 class Node:
@@ -107,6 +108,15 @@ class DAG:
             cycle = nx.find_cycle(g)
             cycle = [(n0.name, n1.name) for n0, n1 in cycle]
             raise ValueError(f"Graph is not acyclic, please remove cycle ({cycle})")
+
+    def summary(self, print_fn: Callable = None) -> None:
+        g = self.create_graph()
+        s = draw([n.name for n in g.nodes], [(t.name, s.name) for s, t in g.edges])
+
+        if print_fn is None:
+            print_fn = print
+
+        print_fn(s)
 
 
 class Root(Node):

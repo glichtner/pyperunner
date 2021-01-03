@@ -15,6 +15,7 @@ def world(data):
 
 # create a sequential pipeline and supply whole pipeline as list in constructor
 pipeline = Sequential("hello-world-example", [hello(), world()])
+pipeline.summary()
 
 # run pipeline
 runner = Runner(data_path="data/", log_path="log/")
