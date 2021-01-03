@@ -55,4 +55,9 @@ class StreamLogger:
             self.logger.log(self.level, line.rstrip())
 
     def flush(self) -> None:
+        """
+        Stub required for using this logger as a stream (stdout / stdterr).
+
+        :return: None
+        """
         pass

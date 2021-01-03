@@ -42,7 +42,7 @@ class Task(Node, ABC):
         self.tag = tag
         self.task_name = self.__class__.__name__
         self.params: Dict = kwargs
-        self.data_path: str
+        self.data_path: str = ""
         self.output: Any = None
         self.status: Task.Status = Task.Status.NOT_STARTED
         self.result: Optional[Task.TaskResult] = None

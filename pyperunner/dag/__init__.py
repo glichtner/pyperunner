@@ -1,4 +1,4 @@
-from typing import List, Union
+from typing import List, Union, Optional
 from collections import Counter
 import networkx as nx
 
@@ -8,7 +8,7 @@ class Node:
         self.name: str = name
         self.children: List[Node] = []
         self.parents: List[Node] = []
-        self.dag: DAG
+        self.dag: Optional[DAG] = None
 
     def _add_child(self, other: "Node") -> None:
         self.children.append(other)
