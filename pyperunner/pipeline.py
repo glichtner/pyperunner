@@ -45,7 +45,9 @@ class Task(Node, ABC):
         self.data_path: str = ""
         self.output: Any = None
         self.status: Task.Status = Task.Status.NOT_STARTED
-        self.result: Optional[Task.TaskResult] = None
+        self.result: Task.TaskResult = Task.TaskResult(
+            status=Task.Status.NOT_STARTED, output=None
+        )
         self.reload: bool = reload
         self.logger = logging.getLogger(self.name)
 
