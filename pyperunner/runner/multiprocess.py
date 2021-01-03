@@ -11,8 +11,12 @@ import time
 import networkx as nx
 
 # inspired by https://github.com/ecdavis/multiprocessing_dag
+from dask.tests.test_config import yaml
+
 from .logger import init_logger, StreamLogger
-from ..pipeline import Task, Pipeline
+from ..pipeline import Pipeline
+from ..util import PipelineResult
+from ..task import Task
 
 
 class Process(multiprocessing.Process):
@@ -55,10 +59,12 @@ class Runner:
         self.g: nx.DiGraph
         self.logger: logging.Logger
 
+        data_path = os.path.realpath(data_path)
         if not os.path.exists(data_path):
             os.makedirs(data_path)
         self.data_path: str = data_path
 
+        log_path = os.path.realpath(log_path)
         if not os.path.exists(log_path):
             os.makedirs(log_path)
         self.log_path: str = log_path
@@ -172,6 +178,21 @@ class Runner:
         dtstr = datetime.now().strftime("%y%m%dT%H%M%S")
         return self.pipeline.name + "_" + dtstr
 
+    def pipeline_params_filename(self) -> str:
+        return os.path.join(self.log_path_current_run, "pipeline.yaml")
+
+    def save_pipeline_params(self) -> None:
+        pdict = self.pipeline.to_dict()
+        pdict["run"] = {"data_path": self.data_path, "log_path": self.log_path}
+
+        filename = self.pipeline_params_filename()
+
+        with open(filename, "w") as f:
+            yaml.dump(pdict, f)
+
+    def results(self) -> PipelineResult:
+        return PipelineResult.from_file(self.pipeline_params_filename())
+
     def run(self, pipeline: Pipeline, force_reload: bool = False) -> None:
 
         self.validate_pipeline(pipeline)
@@ -182,7 +203,8 @@ class Runner:
         self.log_path_current_run = os.path.join(self.log_path, run_name)
         os.mkdir(self.log_path_current_run)
 
-        pipeline.to_file(os.path.join(self.log_path_current_run, "pipeline.yaml"))
+        self.save_pipeline_params()
+
         self.logger = init_logger(
             log_path=self.log_path_current_run, log_level=logging.DEBUG
         )
