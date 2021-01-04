@@ -1,8 +1,3 @@
-.. pyperunner documentation master file, created by
-   sphinx-quickstart on Sat Jan  2 00:22:56 2021.
-   You can adapt this file completely to your liking, but it should at least
-   contain the root `toctree` directive.
-
 Welcome to pyperunner's documentation!
 ======================================
 
@@ -10,7 +5,11 @@ Welcome to pyperunner's documentation!
    :maxdepth: 2
    :caption: Contents:
 
-
+   readme
+   tutorial
+   reference/index
+   authors
+   changelog
 
 Indices and tables
 ==================
