@@ -18,6 +18,7 @@ from ..dag import draw
 from ..pipeline import Pipeline
 from ..util import PipelineResult
 from ..task import Task
+from ..environment import get_environment_info, get_host_info
 
 
 class Process(multiprocessing.Process):
@@ -30,6 +31,12 @@ class Process(multiprocessing.Process):
         self.logger: logging.Logger = logging.getLogger(task.name)
 
     def run(self) -> None:
+        """
+        Forks the process and starts execution of the task
+
+        Returns: None
+
+        """
         sys.stdout = StreamLogger(self.logger, logging.INFO)  # type: ignore
         sys.stderr = StreamLogger(self.logger, logging.ERROR)  # type: ignore
 
@@ -44,17 +51,26 @@ class Process(multiprocessing.Process):
 
 
 class Runner:
+    """
+    Pipeline runner with multiprocessing.
+
+    Args:
+        data_path: Path where data will be stored
+        log_path: Path where log files will be stored
+        process_limit: Maximum number of concurrent worker processes
+    """
+
     def __init__(
-        self,
-        data_path: str,
-        log_path: str,
-        process_limit: int = multiprocessing.cpu_count(),
-    ):
+        self, data_path: str, log_path: str, process_limit: int = None,
+    ) -> None:
         self.tasks_finished: Set[Task] = set()
         self.tasks_error: Set[Task] = set()
         self.tasks_queue: List[Task] = []
         self.tasks_execute: List[Task] = []
         self.proc_running: List[Process] = []
+
+        if process_limit is None:
+            process_limit = multiprocessing.cpu_count()
 
         self.process_limit: int = process_limit
         self.pipeline: Pipeline
@@ -172,6 +188,13 @@ class Runner:
         self.g = pipeline.create_graph()
 
     def write_status_image(self, fname: str = "status.png") -> None:
+        """
+        Write a PNG image of the pipeline DAG to disk.
+
+        Args:
+            fname: Filename to write to (PNG)
+
+        """
         img = self.pipeline.plot_graph()
         path = os.path.join(self.log_path_current_run, fname)
         with open(path, "wb") as f:
@@ -186,7 +209,12 @@ class Runner:
 
     def save_pipeline_params(self) -> None:
         pdict = self.pipeline.to_dict()
-        pdict["run"] = {"data_path": self.data_path, "log_path": self.log_path}
+        pdict["run"] = {
+            "data_path": self.data_path,
+            "log_path": self.log_path,
+            "host": get_host_info(),
+            "env": get_environment_info(stack_level=3),
+        }
 
         filename = self.pipeline_params_filename()
 

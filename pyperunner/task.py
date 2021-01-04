@@ -15,6 +15,15 @@ from .dag import Node
 
 
 def get_exception_str(exc: BaseException) -> str:
+    """
+    Format the traceback of an exception
+
+    Args:
+        exc: Exception
+
+    Returns: (str) Exception traceback
+
+    """
     s = traceback.format_exception(etype=None, value=exc, tb=exc.__traceback__)
     return "".join(s)
 

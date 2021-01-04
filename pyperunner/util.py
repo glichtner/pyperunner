@@ -11,6 +11,9 @@ class TaskResult:
         self.conf = conf
         self.hash = conf["hash"]
 
+    def set_data_path(self, data_path: str) -> None:
+        self.data_path = data_path
+
     def output_filename(self) -> str:
         return os.path.join(self.data_path, self.name, self.hash, "result.dump.gz")
 
@@ -51,6 +54,11 @@ class PipelineResult:
             self.tasks[task] = TaskResult(
                 task, self.data_path, self.conf["tasks"][task]
             )
+
+    def set_data_path(self, data_path: str) -> None:
+        self.data_path = data_path
+        for task_name in self.tasks:
+            self.tasks[task_name].set_data_path(data_path)
 
     def task_result(self, task: str) -> Any:
         return self.tasks[task].output()

@@ -3,7 +3,7 @@ Draws DAG in ASCII.
 
 This file has been taken from the DVC project: https://github.com/iterative/dvc/
 
-The DVC project is released under the Apache 2 License. A copy of the Apache 2 license is supplied in
+The DVC project is released under the Apache 2 license. A copy of the Apache 2 license is supplied in
 ThirdPartyNotices.txt in the root directory of this project.
 
 The code has not been modified other than adding function type hints and removing DVC specific imports and two
