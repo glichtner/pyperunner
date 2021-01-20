@@ -35,7 +35,7 @@ import pkg_resources
 import pyperunner.environment.optional as opt
 
 # from sacred import SETTINGS
-from .utils import iter_prefixes
+from pyperunner.environment.utils import iter_prefixes
 
 MB = 1048576
 MODULE_BLACKLIST = set(sys.builtin_module_names)

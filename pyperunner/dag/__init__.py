@@ -1,7 +1,7 @@
 from typing import List, Union, Optional, Callable
 from collections import Counter
 import networkx as nx
-from .dagascii import draw
+from pyperunner.dag.dagascii import draw
 
 
 class Node:

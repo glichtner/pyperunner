@@ -11,7 +11,11 @@ import inspect
 import platform
 from typing import List, Dict
 
-from .dependencies import gather_sources_and_dependencies, Source, PackageDependency
+from pyperunner.environment.dependencies import (
+    gather_sources_and_dependencies,
+    Source,
+    PackageDependency,
+)
 
 
 def _collect_repositories(sources: List[Source]) -> List[Dict[str, str]]:
@@ -23,8 +27,26 @@ def _collect_repositories(sources: List[Source]) -> List[Dict[str, str]]:
 
 
 def get_environment_info(stack_level: int = 1) -> Dict:
-    """Get a dictionary with information about the current environment.
+    """
+    Get a dictionary with information about the current environment.
 
+    The logic of this function was taken from sacred project: https://github.com/IDSIA/sacred
+
+    Args:
+        stack_level:
+
+    Returns:
+        Dict with information about
+        - *base_dir*: path of the main script file
+        - *sources*: List of all local source files (not imported via installed packages)
+            - *filename*: Filename of the source file relative to base_dir
+            - *md5hash*: md5 hash of the source file contents
+        - *dependencies*: List of all imported modules/packages with version
+        - *repositories*: List of all git repositories involved
+            - *commit*: commit hash
+            - *url*: git repository remote URL
+            - *dirty*: If local working copy is dirty
+        - *mainfile*: Filename of the main script file
     """
     _caller_globals = inspect.stack()[stack_level][0].f_globals
 
@@ -53,6 +75,15 @@ def get_environment_info(stack_level: int = 1) -> Dict:
 
 
 def get_host_info() -> Dict[str, str]:
+    """
+    Gets basic information about the host platform
+
+    Returns: Dict with
+        - *hostname*
+        - *os*: operating system information
+        - *python*: python version
+
+    """
     return {
         "hostname": platform.node(),
         "os": platform.platform(),

@@ -1,6 +1,6 @@
-from .version import __version__
-from .pipeline import Pipeline, Sequential
-from .task import Task
-from .decorator import run, task
-from .runner import Runner
-from .util import PipelineResult, TaskResult
+from pyperunner.version import __version__
+from pyperunner.task import Task
+from pyperunner.pipeline import Pipeline, Sequential
+from pyperunner.decorator import run, task
+from pyperunner.runner import Runner
+from pyperunner.util import PipelineResult, TaskResult

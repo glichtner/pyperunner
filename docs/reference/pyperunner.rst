@@ -5,9 +5,6 @@ This section describes pyperunner's API.
 
 .. currentmodule:: pyperunner
 
-.. automodule:: pyperunner
-   :no-undoc-members:
-
 .. autosummary::
 
    Task
@@ -17,24 +14,22 @@ This section describes pyperunner's API.
 Task
 =========
 
-.. currentmodule:: pyperunner
-
 .. autoclass:: Task
    :members:
+
+.. autoclass:: TaskResult
 
 Pipeline
 =========
 
-.. currentmodule:: pyperunner
-
 .. autoclass:: Pipeline
+   :members:
+
+.. autoclass:: Sequential
    :members:
 
 Runner
 =========
 
-.. currentmodule:: pyperunner
-
 .. autoclass:: Runner
    :members:
-

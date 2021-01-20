@@ -1,11 +1,26 @@
 import os
 import logging
+from typing import Optional
+
 import coloredlogs
 
 
 def init_logger(
-    log_path: str = None, log_format: str = None, log_level: int = logging.INFO
+    log_path: Optional[str] = None,
+    log_format: Optional[str] = None,
+    log_level: int = logging.INFO,
 ) -> logging.Logger:
+    """
+    Setup logging instances
+
+    Args:
+        log_path: Path where log file will be saved - if None, no output to file
+        log_format: log format to be used
+        log_level: The minimal logging level that will be output
+
+    Returns: Logger instance
+
+    """
 
     logger = logging.getLogger()
     logger.setLevel(log_level)
@@ -46,17 +61,39 @@ def init_logger(
 
 class StreamLogger:
     def __init__(self, logger: logging.Logger, level: int):
+        """
+        Stream mock to reroute stdout and stderr to a logger instance
+
+        Usage: Set sys.stdout and/or sys.stderr to instances of this class
+        ``` python
+        sys.stdout = StreamLogger(logger, logging.INFO)  # type: ignore
+        sys.stderr = StreamLogger(logger, logging.ERROR)  # type: ignore
+        ``` python
+
+        Args:
+            logger: Logger instance to which every call to write() will be logged to
+            level: logging level when writing to the logger
+        """
         self.logger = logger
         self.level = level
         self.linebuf = ""
 
     def write(self, buf: str) -> None:
+        """
+        Stream write function - writes to logger instance
+
+        Args:
+            buf: Text to write to logger
+
+        Returns: None
+
+        """
         for line in buf.rstrip().splitlines():
             self.logger.log(self.level, line.rstrip())
 
     def flush(self) -> None:
         """
-        Stub required for using this logger as a stream (stdout / stdterr).
+        Stub required for using this logger as a stream (stdout / stderr).
 
         :return: None
         """

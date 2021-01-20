@@ -2,7 +2,7 @@ import inspect
 from functools import wraps
 from typing import Any, Callable
 
-from pyperunner import Task
+from pyperunner.task import Task
 
 
 def task(class_name: str, receives_input: bool = True) -> Callable:

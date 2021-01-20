@@ -7,6 +7,7 @@ Welcome to pyperunner's documentation!
 
    readme
    tutorial
+   manual
    reference/index
    authors
    changelog

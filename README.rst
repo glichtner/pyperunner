@@ -1,5 +1,5 @@
-PypeRunner
-##########
+PypeRunner - Pure Python ETL Pipeline
+#####################################
 .. start-badges
 
 .. image:: https://readthedocs.org/projects/pyperunner/badge/?version=latest
@@ -20,15 +20,19 @@ PypeRunner
 
 .. end-badges
 
-Yet another ETL pipeline runner for pure python, using multiprocessing and directed acyclic graphs.
+PypeRunner is an easy to use yet powerful workflow pipeline tool written in pure python, with parallel processing of tasks, smart
+caching of results and reproducible runs.
+PypeRunner allows for the creation of complex workflows with branching and merging of several concurrent execution flows.
 
 Features
 ========
 
+- Easy to use extract, transform load (ETL) pipeline tool
+- Reproducible pipeline runs for data science / machine learning tasks
+- Easy creation of pipelines using functional API chaining (see below)
 - Parallel processing of steps
 - Caching of previously run steps to speed up processing
 - Re-run of steps (and all subsequent steps) when parameters are changed
-- Easy creation of pipelines using functional API chaining (see below)
 - Save & read pipelines to/from yaml
 - Graphical output of pipeline run
 
