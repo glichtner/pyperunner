@@ -62,3 +62,11 @@ def task(name: str, receives_input: bool = True) -> Callable:
         )
 
     return decorator
+
+
+def run(func: Callable) -> Callable:
+    @wraps(func)
+    def wrapper(self: Task, data: Any) -> Task.TaskResult:
+        return self.run_wrapper(func, data)
+
+    return wrapper

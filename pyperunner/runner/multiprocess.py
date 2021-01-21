@@ -610,7 +610,11 @@ class Runner:
 
             time.sleep(0.01)
 
-        self.logger.info("Pipeline run finished")
+        if len(self.tasks_error) == 0:
+            self.logger.info("Pipeline run finished")
+        else:
+            self.logger.warning("Pipeline run finished with errors")
+
         self.write_status_image()
         self.logger.info(
             f"Stored pipeline parameters in {self.pipeline_params_filename()}"

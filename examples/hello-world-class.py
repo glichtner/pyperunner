@@ -1,12 +1,14 @@
-from pyperunner import Runner, Sequential, Task
+from pyperunner import Runner, Sequential, Task, run
 
 
 class Hello(Task):
+    @run
     def run(self, data):
         return "Hello"
 
 
 class World(Task):
+    @run
     def run(self, data):
         return f"{data} world"
 
