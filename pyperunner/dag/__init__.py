@@ -1,4 +1,5 @@
 from typing import List, Union, Optional, Callable
+import inspect
 from collections import Counter
 import networkx as nx
 from pyperunner.dag.dagascii import draw
@@ -97,6 +98,14 @@ class Node:
         Returns:
             Self (to allow chaining)
         """
+        if not isinstance(node, Node):
+            if inspect.isclass(node) and issubclass(node, Node):
+                raise ValueError(
+                    'Supplied node is not instantiated - did you use "node" instead of "node()"?'
+                )
+            else:
+                raise ValueError("Supplied node is not of type Node")
+
         if self.dag is not None and not self.dag.is_unique_node(node):
             raise ValueError(f"Node names must be unique, '{node.name}' already exists")
 

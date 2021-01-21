@@ -1,5 +1,5 @@
 import time
-from pyperunner import Runner, Task, Pipeline, run
+from pyperunner import Runner, Task, Pipeline
 
 
 class WaitTask(Task):
@@ -8,7 +8,6 @@ class WaitTask(Task):
     to simulate some time-consuming tasks
     """
 
-    @run
     def run(self, data, wait, **kwargs):
         time.sleep(wait)
         return self.name

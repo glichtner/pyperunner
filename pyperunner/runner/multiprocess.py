@@ -48,7 +48,7 @@ class Process(multiprocessing.Process):
         sys.stderr = StreamLogger(self.logger, logging.ERROR)  # type: ignore
 
         try:
-            self.task.run(self.data)
+            self.task.run(data=self.data)
         except Exception as e:
             raise e
         finally:

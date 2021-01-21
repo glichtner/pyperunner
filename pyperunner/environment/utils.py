@@ -9,7 +9,7 @@ ThirdPartyNotices.txt in the root directory of this project.
 The original file can be found here:
 https://github.com/IDSIA/sacred/blob/8fd86e0700461e90cf313c44ab735584a3178def/sacred/utils.py
 """
-from collections import Generator
+from collections.abc import Generator
 
 
 def join_paths(*parts: str) -> str:
