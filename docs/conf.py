@@ -14,6 +14,7 @@ extensions = [
     'sphinx_autodoc_typehints',
     'sphinx.ext.todo',
     'sphinx.ext.viewcode',
+    'sphinx.ext.graphviz',
 ]
 
 autodoc_mock_imports = ['multiprocessing']

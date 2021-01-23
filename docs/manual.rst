@@ -56,21 +56,26 @@ To use a user-defined function as a task, simply tag it with the :py:func:`~pype
         result = do_something(data)
         return result
 
+    # note that creating the task is performed by calling the function
+    # but *without* the data argument.
+    my_task = my_function()
+
 The :py:func:`~pyperunner.task` decorator has a required positional parameter `name`, which is used as the name of the
 task. It is required that each task in pipeline has a unique name.
 
 The function that is decorated by the :py:func:`~pyperunner.task` decorator needs to either accept a named parameter
-`data` or
+`data` or the task() decorator needs to be supplied a `receives_input=False` parameter.
 
 .. code-block:: python
 
-    # Create a task named "SimpleTask" - note that the function accepts the `data` keyword parameter
+    # Create a task named "SimpleTask" - note that the function accepts
+    # the `data` keyword parameter
     @task('SimpleTaskWithInput')
     def simpletask_with_input(data):
         return 'simple-task'
 
-    # If the function should not accept data (i.e. be a starting task of the pipeline), the `receives_input=False`
-    # parameter must be supplied to the task() decorator.
+    # If the function should not accept data (i.e. be a starting task of the pipeline),
+    # the `receives_input=False` parameter must be supplied to the task() decorator.
     @task('SimpleTaskWithoutInput', receives_input=False)
     def simpletask_without_input():
         return 'simple-task'
@@ -79,9 +84,28 @@ The function that is decorated by the :py:func:`~pyperunner.task` decorator need
     @task('SimpleTaskError')
     def simpletask_without_input_error():
         return 'simple-task'
-    # raises AttributeError: To receive input data, the function must accept the named parameter "data"
+    # raises AttributeError: To receive input data, the function must accept
+    # the named parameter "data"
 
-  - task via @task (mit allen parametern)
+
+You can add additional parameters to the function definition. These then need to be supplied during task creation time:
+
+.. code-block:: python
+
+    @task("MyTaskWithParameters")
+    def my_function(data, reduce, n_iterations=10):
+        result = data
+        for i in range(n_iterations):
+            result = do_something(result, reduce=reduce)
+
+        return result
+
+    # The task is created by calling the function but always *without*
+    # the `data` argument.
+    my_task = my_function(reduce=True, n_iterations=20)
+
+    # Parameters with default values may be skipped during task creation
+    my_task = my_function(reduce=True)
 
 
 Class as task
