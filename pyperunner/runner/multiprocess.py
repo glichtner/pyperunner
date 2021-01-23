@@ -10,6 +10,7 @@ import time
 import networkx as nx
 import yaml
 
+from pyperunner.version import __version__
 from pyperunner.task import Task
 from pyperunner.pipeline import Pipeline, PipelineError
 from pyperunner.runner.logger import init_logger, StreamLogger
@@ -446,6 +447,7 @@ class Runner:
             "log_path": self.log_path,
             "host": get_host_info(),
             "env": get_environment_info(stack_level=3),
+            "pyperunner": __version__,
         }
 
         filename = self.pipeline_params_filename()
@@ -613,8 +615,9 @@ class Runner:
         self.logger = init_logger(
             log_path=self.log_path_current_run, log_level=logging.INFO
         )
-
         self.save_pipeline_params()
+
+        self.logger.info(f"Starting pipeline run (pyperunner v{__version__})")
         self.logger.info(
             f"Storing pipeline parameters in {self.pipeline_params_filename()}"
         )
