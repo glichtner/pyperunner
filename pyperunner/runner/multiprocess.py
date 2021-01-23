@@ -144,20 +144,19 @@ class Runner:
                 return task
         return None
 
-    def get_predecessor_outputs(self, task: Task) -> Dict[str, Task]:
+    def get_predecessor_outputs(self, task: Task) -> List[Any]:
         """
         Get the results of all predecessor (parent) task of a task.
 
         Used to feed the outputs (return values) of the parent task to a child class when running it.
-        Note: Each predecessor must have a unique name for this function to work properly (this is enforced).
 
         Args:
             task: Task for which the predecessor's outputs are returned.
 
-        Returns: Dict of all parent task name (key) and their outputs (values)
+        Returns: List of all parent task outputs
 
         """
-        return {pt.name: pt.output for pt in self.g.predecessors(task)}
+        return [pt.output for pt in self.g.predecessors(task)]
 
     def start_task(self, task: Task) -> Process:
         """
