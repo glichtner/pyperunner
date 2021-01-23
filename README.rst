@@ -257,7 +257,7 @@ Multiple paths pipeline
 
 `pipeline.summary()` prints the following ascii summary:
 
-.. code-block:: shell
+.. code-block:: raw
 
                                                                           +---------------+
                                                                           | LoadData(csv) |

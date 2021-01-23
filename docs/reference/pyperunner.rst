@@ -10,6 +10,7 @@ This section describes pyperunner's API.
    Task
    Runner.run
    Pipeline.from_file
+   PipelineResult
 
 Task
 =========
@@ -33,3 +34,10 @@ Runner
 
 .. autoclass:: Runner
    :members:
+
+PipelineResult
+===============
+
+.. autoclass:: PipelineResult
+   :members:
+
