@@ -11,7 +11,7 @@ import networkx as nx
 import yaml
 
 from pyperunner.task import Task
-from pyperunner.pipeline import Pipeline
+from pyperunner.pipeline import Pipeline, PipelineError
 from pyperunner.runner.logger import init_logger, StreamLogger
 from pyperunner.dag import draw
 from pyperunner.util import PipelineResult
@@ -36,6 +36,7 @@ class Process(multiprocessing.Process):
         self.data: Any = data
         self.result_queue: multiprocessing.Queue = result_queue
         self.logger: logging.Logger = logging.getLogger(task.name)
+        self.result_received = False
 
     def run(self) -> None:
         """
@@ -216,6 +217,7 @@ class Runner:
         """
         task.set_status(result.status)
         task.set_output(result.output)
+        task.result = result
 
         if result.status != Task.Status.FAILURE:
             self.tasks_finished.add(task)
@@ -241,55 +243,77 @@ class Runner:
         Returns: None
 
         """
-        # TODO: can this function be rewritten to be easier understandable?
         for proc in self.proc_running:
+            self._finish_task(proc)
 
-            # indicator variable if the process was removed from the process list in this step
-            proc_removed = False
+    def _receive_queue(self, proc: Process, proc_removed: bool) -> bool:
+        """
+        Pulls a process (task) queue for return data.
 
-            if not proc.is_alive():
-                # process has finished and been stopped
-                self.proc_running.remove(proc)
-                proc_removed = True
-                # TODO make sure task has provided its output data
-                self.logger.debug(f"{proc.task.name} exit code: {proc.exitcode}")
+        Args:
+            proc: Process to query for data
+            proc_removed: If the process has been removed, i.e. is dead
 
-                if proc.exitcode != 0:
-                    e = Exception(
-                        f"Task {proc.task.name} exited with code {proc.exitcode}"
-                    )
-                    result = Task.TaskResult(
-                        status=Task.Status.FAILURE, output=None, exception=e,
-                    )
-                    self.logger.error(str(e))
-                    self.process_task_result(proc.task, result)
-                    continue
+        Returns: True if data was received or process is dead and no data was received, False otherwise
 
-                if proc.task.status != Task.Status.RUNNING:
-                    # the status of this task was already updated from calling the :py:meth:`Runner.process_task_result`
-                    # in a previous loop, so no need to get the data (i.e. continue the loop for this task)
-                    continue
+        """
+        try:
+            result = proc.result_queue.get_nowait()
+            proc.result_received = True
+        except Empty:
+            # No result received from the process
+            if not proc_removed:
+                # The process is still alive and wasn't removed, so just continue (this is a normal status)
+                return False
+            else:
+                # Process was removed (i.e. is dead) but didn't yield a result -> exception state, because
+                # if an error/exception had occurred during the process it would have been captured by
+                # TODO document by which part normal exceptions during task execution are captured
+                result = Task.TaskResult(
+                    status=Task.Status.FAILURE,
+                    output=None,
+                    exception=Exception("Unknown error"),
+                )
 
-            # At this point, the process is either still alive (because it needs to send the data to the queue)
-            # or it is dead (because data was already sent to the queue)
-            try:
-                result = proc.result_queue.get_nowait()
-            except Empty:
-                # No result received from the process
-                if not proc_removed:
-                    # The process is still alive and wasn't removed, so just continue (this is a normal status)
-                    continue
-                else:
-                    # Process was removed (i.e. is dead) but didn't yield a result -> exception state, because
-                    # if an error/exception had occurred during the process it would have been captured by
-                    # TODO document by which part normal exceptions during task execution are captured
-                    result = Task.TaskResult(
-                        status=Task.Status.FAILURE,
-                        output=None,
-                        exception=Exception("Unknown error"),
-                    )
+        self.process_task_result(proc.task, result)
 
-            self.process_task_result(proc.task, result)
+        return True
+
+    def _finish_task(self, proc: Process) -> None:
+        """
+        Finishes a single task (process).
+
+        See :py:meth:`pyperunner.Runner.finish_tasks` for details.
+
+        Args:
+            proc: Process to finish
+
+        Returns: None
+
+        """
+        if proc.is_alive():
+            self._receive_queue(proc, proc_removed=False)
+        else:
+            self.proc_running.remove(proc)
+            self.logger.debug(f"{proc.task.name} exit code: {proc.exitcode}")
+
+            if proc.exitcode == 0:
+                # Task exited normally
+                if not proc.result_received:
+                    self._receive_queue(proc, proc_removed=True)
+            else:
+                # Task exited with an error
+                if not proc.result_received:
+                    results_received = self._receive_queue(proc, proc_removed=True)
+                    if not results_received:
+                        e = Exception(
+                            f"Task {proc.task.name} exited with code {proc.exitcode}"
+                        )
+                        result = Task.TaskResult(
+                            status=Task.Status.FAILURE, output=None, exception=e,
+                        )
+                        self.logger.error(str(e))
+                        self.process_task_result(proc.task, result)
 
     def log_exception(self, result: Task.TaskResult) -> None:
         """
@@ -325,6 +349,8 @@ class Runner:
         Returns: None
 
         """
+        if not isinstance(pipeline, Pipeline):
+            raise TypeError(f"pipeline must be of type Pipeline, not {type(pipeline)}")
         pipeline.assert_unique_nodes()
         pipeline.assert_acyclic()
 
@@ -572,6 +598,9 @@ class Runner:
             self.set_pipeline(pipeline)
 
         self.assert_valid_pipeline()
+
+        if len(pipeline) == 0:  # type: ignore
+            raise PipelineError("No tasks in pipeline")
 
         self.queue_tasks(force_reload)
 

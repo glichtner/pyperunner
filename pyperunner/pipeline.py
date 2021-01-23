@@ -7,6 +7,10 @@ from pyperunner.dag import Node, DAG
 from pyperunner.task import Task
 
 
+class PipelineError(Exception):
+    pass
+
+
 class Pipeline(DAG):
     colormap = {
         Task.Status.FAILURE: "red",

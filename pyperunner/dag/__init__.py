@@ -147,6 +147,16 @@ class DAG:
 
         return self
 
+    def __len__(self) -> int:
+        """
+        Number of nodes in the DAG
+
+        Returns: Number of nodes in the DAG
+
+        """
+        g = self.create_graph()
+        return len(g)
+
     def _add_node(self, g: nx.DiGraph, node: Node) -> None:
         """
         Adds a node to the internal graph representation.
