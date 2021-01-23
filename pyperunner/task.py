@@ -129,10 +129,18 @@ class Task(Node, metaclass=ABCMeta):
         self.reload: bool = reload
         self.logger = logging.getLogger(self.name)
 
+        self.assert_run_decorated()
         try:
             self.assert_params_complete()
         except TypeError as e:
             raise TaskError(f"Could not create task {self.task_name}({self.tag}): {e}")
+
+    def assert_run_decorated(self) -> None:
+        if (
+            not hasattr(self.run, "__decorated__")
+            or "run" not in self.run.__decorated__  # type: ignore
+        ):
+            raise TaskError(f"{self.task_name}.run() method not decorated with @run")
 
     def assert_params_complete(self) -> None:
         """
@@ -245,6 +253,7 @@ class Task(Node, metaclass=ABCMeta):
         Worker method that must be implemented when subclassing.
 
         This method contains the Tasks execution logic.
+        Note: The
 
         Args:
             **kwargs: Task-specific parameters

@@ -57,8 +57,16 @@ def task(name: str, receives_input: bool = True) -> Callable:
                 func, data, static=True, receives_input=receives_input
             )
 
+        # mark the wrapper as decorated to check if this decorator has been used on a Task.run function
+        wrapper.__decorated__ = ["run"]  # type: ignore
+
         return type(
             name, (Task,), {"run": wrapper, "_run_signature": inspect.signature(func)}
+        )
+
+    if inspect.isfunction(name):
+        raise TypeError(
+            "Invalid decorator use - did you use @task instead of @task(name)?"
         )
 
     return decorator
@@ -68,5 +76,8 @@ def run(func: Callable) -> Callable:
     @wraps(func)
     def wrapper(self: Task, data: Any) -> Task.TaskResult:
         return self.run_wrapper(func, data)
+
+    # mark the wrapper as decorated to check if this decorator has been used on a Task.run function
+    wrapper.__decorated__ = ["run"]  # type: ignore
 
     return wrapper
