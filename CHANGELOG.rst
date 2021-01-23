@@ -7,4 +7,4 @@ Version History
 ---------------
 
 0.1.0
-    * Project created.
+    * PypeRunner's first release

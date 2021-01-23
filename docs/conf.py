@@ -1,5 +1,7 @@
 import os
 import time
+import sys
+sys.path.append(os.path.relpath('..'))
 from pyperunner import __version__
 
 extensions = [

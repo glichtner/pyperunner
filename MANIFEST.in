@@ -1,0 +1,11 @@
+graft docs
+
+include .flake8
+include .pre-commit-config.yaml
+include .readthedocs.yml
+include AUTHORS.rst
+include CHANGELOG.rst
+include appveyor.yml
+include LICENSE.txt
+include requirements.txt
+include tox.ini

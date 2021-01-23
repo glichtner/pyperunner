@@ -1,0 +1,55 @@
+version: '{branch}-{build}'
+stack: python 3.7
+environment:
+  matrix:
+    - APPVEYOR_BUILD_WORKER_IMAGE: Ubuntu
+      TOXENV: py37
+    - APPVEYOR_BUILD_WORKER_IMAGE: macos
+      TOXENV: py37
+    - APPVEYOR_BUILD_WORKER_IMAGE: Ubuntu1604
+      TOXENV: py37
+    - APPVEYOR_BUILD_WORKER_IMAGE: Ubuntu2004
+      TOXENV: py37
+    - APPVEYOR_BUILD_WORKER_IMAGE: macos-mojave
+      TOXENV: py37
+
+install:
+  - sh: |
+      sudo apt-get update
+      sudo apt-get install graphviz -y
+      brew install graphviz
+      python -m pip install --upgrade pip
+      python -m pip install --upgrade setuptools wheel virtualenv tox
+      python -m virtualenv venv
+      source venv/bin/activate
+      python -m pip install --upgrade tox
+      python -m pip install -r requirements.txt
+build_script:
+  - sh: |
+      python setup.py sdist
+
+test_script:
+  - sh: tox
+
+artifacts:
+  - path: "dist/*"
+
+after_deploy:
+  - ps: |
+        if($env:APPVEYOR_REPO_TAG -eq 'true') {
+          Write-Output ("Deploying " + $env:APPVEYOR_REPO_TAG_NAME + " to PyPI...")
+          &python -m pip install twine
+          &python -m twine upload -u ${Env:PYPI_USER} -p ${Env:PYPI_PASS} --skip-existing dist/*.tar.gz
+        } else {
+          Write-Output "No tag for deployment"
+        }
+deploy:
+  release: $(APPVEYOR_REPO_TAG_NAME)
+  description: 'pyperunner $(APPVEYOR_REPO_TAG_NAME)'
+  provider: GitHub
+  auth_token: $(GITHUB_AUTH_TOKEN)
+  artifact: /.*\.(tar\.gz|whl)/
+  draft: false
+  prerelease: false
+  on:
+    APPVEYOR_REPO_TAG: true        # deploy on tag push only
