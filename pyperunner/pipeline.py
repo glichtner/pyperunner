@@ -1,10 +1,11 @@
-from typing import Dict, List, Type
+from typing import Dict, List, Type, Optional
 import yaml
 import networkx as nx
 import importlib
 
 from pyperunner.dag import Node, DAG
 from pyperunner.task import Task
+from pyperunner.util import PipelineResult
 
 
 class PipelineError(Exception):
@@ -34,6 +35,7 @@ class Pipeline(DAG):
         """
         super().__init__()
         self.name = name
+        self._results: Optional[PipelineResult] = None
 
         if tasks is not None:
             self.set_tasks(tasks)
@@ -279,6 +281,23 @@ class Pipeline(DAG):
         with open(filename, "r") as f:
             pipeline_dict = yaml.safe_load(f)
         return Pipeline.from_dict(pipeline_dict, compare_hashes=compare_hashes)
+
+    def set_results(self, results: PipelineResult) -> None:
+        """
+        Stores results of a pipeline run
+
+        Args:
+            results: The pipeline results
+
+        Returns: None
+
+        """
+        self._results = results
+
+    def results(self) -> PipelineResult:
+        if self._results is None:
+            raise AttributeError("Results have not been set. Run the pipeline first!")
+        return self._results
 
 
 class Sequential(Pipeline):

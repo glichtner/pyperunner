@@ -582,7 +582,7 @@ class Runner:
         a separate process. Results from each task are collected using multiprocessing.Queue.
 
         Call :py:meth:`Runner.results` after finishing the run to access the results or alternatively create
-        a :py:attr:`pyperunner.PipelineResults` object explicitly from the parameter.yaml file of the run.
+        a :py:attr:`pyperunner.PipelineResult` object explicitly from the parameter.yaml file of the run.
 
         Args:
             pipeline: pipeline to be run (or None, if already set via :py:meth:`Runner.set_pipeline`)
@@ -637,6 +637,8 @@ class Runner:
             self.finish_tasks()
 
             time.sleep(0.01)
+
+        pipeline.set_results(self.results())  # type: ignore
 
         if len(self.tasks_error) == 0:
             self.logger.info("Pipeline run finished")

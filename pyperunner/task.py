@@ -203,7 +203,7 @@ class Task(Node, metaclass=ABCMeta):
         (predecessor) nodes. It is therefore dependent on the pipeline the task is part of. This is used to precisely
         identify a task in a given context (e.g. when saving and loading pipelines using the
         :py:meth:`pyperunner.Pipeline.to_file` and :py:meth:`pyperunner.Pipeline.from_file` methods to store/load a
-        pipeline from file. It ensures reproducibility of single pipeline runs.
+        pipeline from file). It ensures reproducibility of single pipeline runs.
 
         Returns: Task hash
 
