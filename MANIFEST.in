@@ -9,3 +9,4 @@ include appveyor.yml
 include LICENSE
 include requirements.txt
 include tox.ini
+include tests/*
