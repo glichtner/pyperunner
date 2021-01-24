@@ -1,15 +1,23 @@
 # -*- coding: utf-8 -*-
 
 import os
+import re
 from typing import List
 
 from setuptools import setup, find_packages
 
-from pyperunner.version import __version__
-
 
 def read(fname: str) -> str:
     return open(os.path.join(os.path.dirname(__file__), fname)).read()
+
+
+def read_version():
+    with open("pyperunner/version.py", "r") as f:
+        c = f.readline()
+    g = re.match('__version__ = "([^"]+)"', c)
+    if not g:
+        raise RuntimeError("Unable to find version string in __version__.py")
+    return g.group(1)
 
 
 def parse_requirements(filename: str) -> List[str]:
@@ -17,7 +25,7 @@ def parse_requirements(filename: str) -> List[str]:
     with open(filename, "r") as fd:
         lines = []
         for line in fd:
-            line.strip()
+            line = line.strip()
             if line and not line.startswith("#"):
                 lines.append(line)
     return lines
@@ -35,7 +43,7 @@ if __name__ == "__main__":
         long_description="\n\n".join([readme, changes]),
         license="GNU General Public License v3",
         url="https://github.com/glichtner/pyperunner/",
-        version=__version__,
+        version=read_version(),
         author="Gregor Lichtner",
         maintainer="Gregor Lichtner",
         install_requires=requirements,
@@ -46,7 +54,7 @@ if __name__ == "__main__":
             # complete list: http://pypi.python.org/pypi?%3Aaction=list_classifiers
             "Development Status :: 4 - Beta",
             "License :: OSI Approved :: GNU General Public License v3 (GPLv3)",
-            "Operating System:: MacOS",
+            "Operating System :: MacOS",
             "Operating System :: Unix",
             "Operating System :: POSIX",
             "Intended Audience :: Developers",

@@ -39,6 +39,13 @@ Features
 Installation
 ============
 
+Install from conda forge via
+
+.. code-block:: bash
+
+    conda install pyperunner -c conda-forge
+
+
 Install from pip via
 
 .. code-block:: bash
