@@ -279,6 +279,18 @@ class Runner:
 
         return True
 
+    def _close_queue(self, proc: Process) -> None:
+        """
+        Closes the queue of process.
+
+        Args:
+            proc: Process for which to close the queue(s)
+
+        Returns: None
+
+        """
+        proc.result_queue.close()
+
     def _finish_task(self, proc: Process) -> None:
         """
         Finishes a single task (process).
@@ -314,6 +326,10 @@ class Runner:
                         )
                         self.logger.error(str(e))
                         self.process_task_result(proc.task, result)
+
+            # garbage collect
+            self._close_queue(proc)
+            proc.close()
 
     def log_exception(self, result: Task.TaskResult) -> None:
         """
