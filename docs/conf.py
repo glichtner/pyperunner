@@ -6,7 +6,7 @@ from pyperunner import __version__
 
 extensions = [
     'sphinx.ext.autodoc',
-    'scanpydoc.elegant_typehints',
+#    'scanpydoc.elegant_typehints', # disabled due to build error on readthedocs.io
     'sphinx.ext.autosummary',
     'sphinx.ext.coverage',
     'sphinx.ext.doctest',
@@ -60,17 +60,18 @@ napoleon_use_param = True
 
 # workaround for https://github.com/sphinx-doc/sphinx/issues/7493
 # see https://icb-scanpydoc.readthedocs-hosted.com/en/latest/scanpydoc.elegant_typehints.html
-qualname_overrides = {
-    "pyperunner.pipeline.Pipeline": "pyperunner.Pipeline",
-    "pyperunner.pipeline.Sequential": "pyperunner.Sequential",
-    "pyperunner.task.Task": "pyperunner.Task",
-    "pyperunner.task.Task.Status": "pyperunner.Task.Status",
-    "pyperunner.task.Task.TaskResult": "pyperunner.Task.TaskResult",
-    "pyperunner.runner.multiprocess.Runner": "pyperunner.Runner",
-    "pyperunner.decorator.run": "pyperunner.run",
-    "pyperunner.decorator.task": "pyperunner.task",
-    "pyperunner.util.PipelineResult": "pyperunner.PipelineResult",
-    "pyperunner.util.TaskResult": "pyperunner.TaskResult",
-    "pyperunner.task.Task.TaskResult": "pyperunner.Task.TaskResult"
-}
+# disabled due to build error on readthedocs.io
+#qualname_overrides = {
+#    "pyperunner.pipeline.Pipeline": "pyperunner.Pipeline",
+#    "pyperunner.pipeline.Sequential": "pyperunner.Sequential",
+#    "pyperunner.task.Task": "pyperunner.Task",
+#    "pyperunner.task.Task.Status": "pyperunner.Task.Status",
+#    "pyperunner.task.Task.TaskResult": "pyperunner.Task.TaskResult",
+#    "pyperunner.runner.multiprocess.Runner": "pyperunner.Runner",
+#    "pyperunner.decorator.run": "pyperunner.run",
+#    "pyperunner.decorator.task": "pyperunner.task",
+#    "pyperunner.util.PipelineResult": "pyperunner.PipelineResult",
+#    "pyperunner.util.TaskResult": "pyperunner.TaskResult",
+#    "pyperunner.task.Task.TaskResult": "pyperunner.Task.TaskResult"
+#}
 annotate_defaults = False
