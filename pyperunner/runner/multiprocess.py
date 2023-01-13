@@ -1,22 +1,22 @@
 import logging
-from datetime import datetime
-from queue import Empty
-from typing import List, Set, Any, Union, Dict, Generator, Callable, Optional
+import multiprocessing
 import os
 import sys
-import multiprocessing
 import time
+from datetime import datetime
+from queue import Empty
+from typing import Any, Callable, Generator, List, Optional, Set, Union
 
 import networkx as nx
 import yaml
 
-from pyperunner.version import __version__
-from pyperunner.task import Task
-from pyperunner.pipeline import Pipeline, PipelineError
-from pyperunner.runner.logger import init_logger, StreamLogger
 from pyperunner.dag import draw
-from pyperunner.util import PipelineResult
 from pyperunner.environment import get_environment_info, get_host_info
+from pyperunner.pipeline import Pipeline, PipelineError
+from pyperunner.runner.logger import StreamLogger, init_logger
+from pyperunner.task import Task
+from pyperunner.util import PipelineResult
+from pyperunner.version import __version__
 
 
 # inspired by https://github.com/ecdavis/multiprocessing_dag
@@ -79,7 +79,10 @@ class Runner:
     """
 
     def __init__(
-        self, data_path: str, log_path: str, process_limit: int = None,
+        self,
+        data_path: str,
+        log_path: str,
+        process_limit: Optional[int] = None,
     ) -> None:
         self.tasks_finished: Set[Task] = set()
         self.tasks_error: Set[Task] = set()
@@ -324,7 +327,9 @@ class Runner:
                             f"Task {proc.task.name} exited with code {proc.exitcode}"
                         )
                         result = Task.TaskResult(
-                            status=Task.Status.FAILURE, output=None, exception=e,
+                            status=Task.Status.FAILURE,
+                            output=None,
+                            exception=e,
                         )
                         self.logger.error(str(e))
                         self.process_task_result(proc.task, result)

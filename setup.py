@@ -4,14 +4,20 @@ import os
 import re
 from typing import List
 
-from setuptools import setup, find_packages
+from setuptools import find_packages, setup
 
 
 def read(fname: str) -> str:
+    """
+    Utility function to read the README file.
+    """
     return open(os.path.join(os.path.dirname(__file__), fname)).read()
 
 
 def read_version():
+    """
+    Read the version from the source code
+    """
     with open("pyperunner/version.py", "r") as f:
         c = f.readline()
     g = re.match('__version__ = "([^"]+)"', c)
@@ -21,7 +27,7 @@ def read_version():
 
 
 def parse_requirements(filename: str) -> List[str]:
-    """ Load requirements from a pip requirements file """
+    """Load requirements from a pip requirements file"""
     with open(filename, "r") as fd:
         lines = []
         for line in fd:

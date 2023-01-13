@@ -1,5 +1,5 @@
-import os
 import logging
+import os
 from typing import Optional
 
 import coloredlogs
@@ -51,7 +51,8 @@ def init_logger(
 
     if log_path is not None:
         add_handler(
-            logging.FileHandler(os.path.join(log_path, "pipeline.log")), log_level,
+            logging.FileHandler(os.path.join(log_path, "pipeline.log")),
+            log_level,
         )
 
     logging.captureWarnings(True)
@@ -60,20 +61,22 @@ def init_logger(
 
 
 class StreamLogger:
+    """
+    Stream mock to reroute stdout and stderr to a logger instance
+
+    Usage: Set sys.stdout and/or sys.stderr to instances of this class
+    ``` python
+    sys.stdout = StreamLogger(logger, logging.INFO)  # type: ignore
+    sys.stderr = StreamLogger(logger, logging.ERROR)  # type: ignore
+    ``` python
+
+    Args:
+        logger: Logger instance to which every call to write() will be logged to
+        level: logging level when writing to the logger
+    """
+
     def __init__(self, logger: logging.Logger, level: int):
-        """
-        Stream mock to reroute stdout and stderr to a logger instance
 
-        Usage: Set sys.stdout and/or sys.stderr to instances of this class
-        ``` python
-        sys.stdout = StreamLogger(logger, logging.INFO)  # type: ignore
-        sys.stderr = StreamLogger(logger, logging.ERROR)  # type: ignore
-        ``` python
-
-        Args:
-            logger: Logger instance to which every call to write() will be logged to
-            level: logging level when writing to the logger
-        """
         self.logger = logger
         self.level = level
         self.linebuf = ""
@@ -97,4 +100,3 @@ class StreamLogger:
 
         :return: None
         """
-        pass

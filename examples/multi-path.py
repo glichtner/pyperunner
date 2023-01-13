@@ -1,5 +1,6 @@
 import time
-from pyperunner import Runner, Task, Pipeline, run
+
+from pyperunner import Pipeline, Runner, Task, run
 
 
 class WaitTask(Task):
@@ -10,6 +11,7 @@ class WaitTask(Task):
 
     @run
     def run(self, data, wait, **kwargs):
+        """Run the wait task"""
         time.sleep(wait)
         return self.name
 
@@ -18,19 +20,19 @@ class WaitTask(Task):
 
 
 class LoadData(WaitTask):
-    pass
+    """Example Task ("LoadData")"""
 
 
 class ProcessData(WaitTask):
-    pass
+    """Example Task ("ProcessData")"""
 
 
 class AugmentData(WaitTask):
-    pass
+    """Example Task ("AugmentData")"""
 
 
 class Evaluate(WaitTask):
-    pass
+    """Example Task ("Evaluate")"""
 
 
 if __name__ == "__main__":

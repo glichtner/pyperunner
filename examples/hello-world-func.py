@@ -1,14 +1,18 @@
-from pyperunner import Runner, Pipeline, task
+from pyperunner import Pipeline, Runner, task
 
 
 @task("Hello", receives_input=False)
 def hello():
+    """Example task that returns "Hello" """
     print("in hello()")
     return "Hello"
 
 
 @task("World")
 def world(data):
+    """
+    Example task that appends "World" to the input data.
+    """
     hello = data["Hello()"]
     print("in world()")
     return f"{hello} world"

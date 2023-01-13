@@ -18,16 +18,16 @@ import re
 import sys
 from pathlib import Path
 from typing import (
-    Tuple,
     Dict,
-    Union,
-    Type,
-    Iterable,
-    List,
-    Iterator,
-    Set,
     Generator,
+    Iterable,
+    Iterator,
+    List,
     Optional,
+    Set,
+    Tuple,
+    Type,
+    Union,
 )
 
 import pkg_resources
@@ -41,7 +41,7 @@ MB = 1048576
 MODULE_BLACKLIST = set(sys.builtin_module_names)
 # sadly many builtins are missing from the above, so we list them manually:
 MODULE_BLACKLIST |= {  # type: ignore
-    None,
+    None,  # type: ignore
     "__future__",
     "_abcoll",
     "_bootlocale",
@@ -411,7 +411,7 @@ def get_py_file_if_possible(pyc_name: str) -> str:
 
 def get_digest(filename: str) -> str:
     """Compute the MD5 hash for a given file."""
-    h = hashlib.md5()
+    h = hashlib.sha256()
     with open(filename, "rb") as f:
         data = f.read(1 * MB)
         while data:
@@ -442,7 +442,7 @@ def get_commit_if_possible(filename: str, save_git_info: bool) -> Tuple:
         return None, None, None
 
     try:
-        from git import Repo, InvalidGitRepositoryError
+        from git import InvalidGitRepositoryError, Repo
     except ImportError as e:
         raise ValueError(
             "Cannot import git (pip install GitPython).\n"
@@ -467,6 +467,8 @@ def get_commit_if_possible(filename: str, save_git_info: bool) -> Tuple:
 
 @functools.total_ordering
 class Source:
+    """A class representing a source file."""
+
     def __init__(
         self, filename: str, digest: str, repo: str, commit: str, isdirty: str
     ) -> None:
@@ -478,6 +480,7 @@ class Source:
 
     @staticmethod
     def create(filename: Optional[str], save_git_info: bool = True) -> "Source":
+        """Create a Source object for a given file."""
         if not filename or not os.path.exists(filename):
             raise ValueError('invalid filename or file not found "{}"'.format(filename))
 
@@ -485,7 +488,8 @@ class Source:
         repo, commit, is_dirty = get_commit_if_possible(main_file, save_git_info)
         return Source(main_file, get_digest(main_file), repo, commit, is_dirty)
 
-    def to_json(self, base_dir: str = None) -> Dict[str, str]:
+    def to_json(self, base_dir: Optional[str] = None) -> Dict[str, str]:
+        """Convert the source to a JSON-serializable dictionary."""
         if base_dir:
             return {
                 "filename": os.path.relpath(self.filename, os.path.realpath(base_dir)),
@@ -496,9 +500,11 @@ class Source:
             return {"filename": self.filename, "md5hash": self.digest}
 
     def __hash__(self) -> int:
+        """Hash the source based on the filename and the digest."""
         return hash(self.filename)
 
     def __eq__(self, other: Union[object, str, "Source"]) -> bool:
+        """Compare two sources for equality."""
         if isinstance(other, Source):
             return self.filename == other.filename
         elif isinstance(other, str):
@@ -507,14 +513,18 @@ class Source:
             return False
 
     def __le__(self, other: "Source") -> bool:
+        """Compare two sources by their filename."""
         return self.filename.__le__(other.filename)
 
     def __repr__(self) -> str:
+        """Return a string representation of the source."""
         return "<Source: {}>".format(self.filename)
 
 
 @functools.total_ordering
 class PackageDependency:
+    """A package dependency."""
+
     modname_to_dist: Dict = {}
 
     def __init__(self, name: str, version: str) -> None:
@@ -522,31 +532,40 @@ class PackageDependency:
         self.version = version
 
     def fill_missing_version(self) -> None:
+        """Try to fill missing version information."""
         if self.version is not None:
             return
         dist = pkg_resources.working_set.by_key.get(self.name)
         self.version = dist.version if dist else None
 
     def to_json(self) -> str:
+        """Convert to JSON string."""
         return "{}=={}".format(self.name, self.version or "<unknown>")
 
     def __hash__(self) -> int:
+        """Hash is based on the name of the package."""
         return hash(self.name)
 
     def __eq__(self, other: Union[object, "PackageDependency"]) -> bool:
+        """Two PackageDependencies are equal if they have the same name."""
         if isinstance(other, PackageDependency):
             return self.name == other.name
         else:
             return False
 
     def __le__(self, other: "PackageDependency") -> bool:
+        """Less than or equal to for sorting."""
         return self.name.__le__(other.name)
 
     def __repr__(self) -> str:
+        """Return a string representation of the package dependency."""
         return "<PackageDependency: {}={}>".format(self.name, self.version)
 
     @classmethod
     def create(cls, mod: Type) -> "PackageDependency":
+        """
+        Create a PackageDependency from a module.
+        """
         if not cls.modname_to_dist:
             # some packagenames don't match the module names (e.g. PyYAML)
             # so we set up a dict to map from module name to package name
@@ -620,6 +639,7 @@ def is_local_source(
 
 
 def get_main_file(globs: Dict, save_git_info: bool) -> Tuple[str, Optional[Source]]:
+    """Get the main file of the experiment."""
     filename = globs.get("__file__")
 
     if filename is None:
@@ -632,6 +652,7 @@ def get_main_file(globs: Dict, save_git_info: bool) -> Tuple[str, Optional[Sourc
 
 
 def iterate_imported_modules(globs: Dict) -> Generator:
+    """Iterate over all modules imported by the given globals dict."""
     checked_modules = set(MODULE_BLACKLIST)
     for glob in globs.values():
         if isinstance(glob, module):
@@ -654,6 +675,7 @@ def iterate_imported_modules(globs: Dict) -> Generator:
 
 
 def iterate_all_python_files(base_path: str) -> Generator:
+    """Iterate over all python files in a directory."""
     # TODO support ignored directories/files
     for dirname, subdirlist, filelist in os.walk(base_path):
         if "__pycache__" in dirname:
@@ -664,6 +686,7 @@ def iterate_all_python_files(base_path: str) -> Generator:
 
 
 def iterate_sys_modules() -> Generator:
+    """Iterate over all modules in sys.modules."""
     items = list(sys.modules.items())
     for modname, mod in items:
         if modname not in MODULE_BLACKLIST and mod is not None:
@@ -673,6 +696,7 @@ def iterate_sys_modules() -> Generator:
 def get_sources_from_modules(
     module_iterator: Iterable, base_path: str, save_git_info: bool
 ) -> Set[Source]:
+    """Get all source files from the given modules."""
     sources = set()
     for modname, mod in module_iterator:
         # hasattr doesn't work with python extensions
@@ -687,6 +711,7 @@ def get_sources_from_modules(
 
 
 def get_dependencies_from_modules(module_iterator: Iterator, base_path: str) -> Set:
+    """Get all dependencies from a list of modules."""
     dependencies = set()
     for modname, mod in module_iterator:
         # hasattr doesn't work with python extensions
@@ -709,12 +734,14 @@ def get_dependencies_from_modules(module_iterator: Iterator, base_path: str) -> 
 def get_sources_from_sys_modules(
     globs: Dict, base_path: str, save_git_info: bool
 ) -> Set[Source]:
+    """Get all local source files from sys.modules."""
     return get_sources_from_modules(iterate_sys_modules(), base_path, save_git_info)
 
 
 def get_sources_from_imported_modules(
     globs: Dict, base_path: str, save_git_info: bool
 ) -> Set[Source]:
+    """Get all sources that were imported by the experiment."""
     return get_sources_from_modules(
         iterate_imported_modules(globs), base_path, save_git_info
     )
@@ -723,6 +750,7 @@ def get_sources_from_imported_modules(
 def get_sources_from_local_dir(
     globs: Dict, base_path: str, save_git_info: bool
 ) -> Set[Source]:
+    """Get all local source files from the experiment directory."""
     return {
         Source.create(filename, save_git_info)
         for filename in iterate_all_python_files(base_path)
@@ -732,16 +760,19 @@ def get_sources_from_local_dir(
 def get_dependencies_from_sys_modules(
     globs: Dict, base_path: str
 ) -> Set[PackageDependency]:
+    """Get all dependencies from sys.modules."""
     return get_dependencies_from_modules(iterate_sys_modules(), base_path)
 
 
 def get_dependencies_from_imported_modules(
     globs: Dict, base_path: str
 ) -> Set[PackageDependency]:
+    """Get all dependencies from imported modules."""
     return get_dependencies_from_modules(iterate_imported_modules(globs), base_path)
 
 
 def get_dependencies_from_pkg(globs: Dict, base_path: str) -> Set[PackageDependency]:
+    """Get dependencies from the pkg_resources module."""
     dependencies = set()
     for dist in pkg_resources.working_set:
         if dist.version == "0.0.0":
@@ -751,7 +782,7 @@ def get_dependencies_from_pkg(globs: Dict, base_path: str) -> Set[PackageDepende
 
 
 def gather_sources_and_dependencies(
-    globs: Dict, save_git_info: bool, base_dir: str = None
+    globs: Dict, save_git_info: bool, base_dir: Optional[str] = None
 ) -> Tuple:
     """Scan the given globals for modules and return them as dependencies."""
     experiment_path, main = get_main_file(globs, save_git_info)

@@ -1,5 +1,6 @@
-from typing import Dict, Any, Generator
 import os
+from typing import Any, Dict, Generator
+
 import joblib
 import yaml
 
@@ -142,9 +143,11 @@ class PipelineResult:
         return self.tasks[task].output()
 
     def __getitem__(self, task: str) -> Any:
+        """Return the results of a certain task"""
         return self.task_result(task)
 
     def __iter__(self) -> Generator:
+        """Iterate over the task names"""
         for key in self.tasks.keys():
             yield key
 

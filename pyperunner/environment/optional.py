@@ -15,6 +15,9 @@ from typing import Tuple
 
 
 def optional_import(*package_names: str) -> Tuple:
+    """
+    Tries to import a package and returns the package if successful, otherwise returns None.
+    """
     try:
         packages = [importlib.import_module(pn) for pn in package_names]
         return True, packages[0]

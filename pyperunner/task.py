@@ -1,13 +1,13 @@
-import inspect
-from typing import Any, Optional, Dict, List, Union, Callable, Iterator
 import hashlib
+import inspect
 import json
 import logging
 import os
-from abc import abstractmethod, ABCMeta
+import traceback
+from abc import ABCMeta, abstractmethod
 from dataclasses import dataclass
 from enum import Enum
-import traceback
+from typing import Any, Callable, Dict, Iterator, List, Optional, Union
 
 import joblib
 import yaml
@@ -16,7 +16,9 @@ from pyperunner.dag import Node
 
 
 class TaskError(Exception):
-    pass
+    """
+    Exception raised when a task fails
+    """
 
 
 def get_exception_str(exc: BaseException) -> str:
@@ -38,50 +40,48 @@ class Result:
     Generic task result (data that is stored on disk)
     """
 
-    pass
-
 
 class Task(Node, metaclass=ABCMeta):
     """
-     A task is a single work unit that is run as part of a :py:class:`~pyperunner.Pipeline`.
+    A task is a single work unit that is run as part of a :py:class:`~pyperunner.Pipeline`.
 
-     All tasks that are run by a pipeline must subclass this class. There are two main ways to accomplish this:
+    All tasks that are run by a pipeline must subclass this class. There are two main ways to accomplish this:
 
-     1. Using the :py:func:`~pyperunner.task` function decorator:
+    1. Using the :py:func:`~pyperunner.task` function decorator:
 
-     .. code-block:: python
+    .. code-block:: python
 
-         from pyperunner import task
+        from pyperunner import task
 
-         @task("Hello")
-         def hello():
-             print("in hello()")
-             return "Hello"
+        @task("Hello")
+        def hello():
+            print("in hello()")
+            return "Hello"
 
-     Note that in this case you need to explicitly state the name of the task as a parameter to the
-     :py:func:`~pyperunner.task` function decorator (here: "Hello").
+    Note that in this case you need to explicitly state the name of the task as a parameter to the
+    :py:func:`~pyperunner.task` function decorator (here: "Hello").
 
-     2. Directly subclassing this class and then using the :py:func:`~pyperunner.run` method decorator on the run()
-     function. Note that the abstract :py:meth:`~pyperunner.Task.run` function must be implemented when subclassing.
+    2. Directly subclassing this class and then using the :py:func:`~pyperunner.run` method decorator on the run()
+    function. Note that the abstract :py:meth:`~pyperunner.Task.run` function must be implemented when subclassing.
 
-     .. code-block:: python
+    .. code-block:: python
 
-         from pyperunner import run
+        from pyperunner import run
 
-         class World(Task):
-             @run
-             def run(self, data):
-                 return f"{data} world"
+        class World(Task):
+            @run
+            def run(self, data):
+                return f"{data} world"
 
-     Note that in contrast to the :py:func:`~pyperunner.task` function decorator, you don't need to specify the
-     task name here. Instead, the class name (here "World") will be used as the task name.
+    Note that in contrast to the :py:func:`~pyperunner.task` function decorator, you don't need to specify the
+    task name here. Instead, the class name (here "World") will be used as the task name.
 
-     Args:
-         tag: Tag of the task; can be used to use the same task multiple times in a single pipeline (every instance
-           of the task needs to have a different tag then to ensure unique task names)
-         reload: Set True if the Task should be run regardless of whether cached results already exist
-         **kwargs: Additional task-specific parameters
-     """
+    Args:
+        tag: Tag of the task; can be used to use the same task multiple times in a single pipeline (every instance
+          of the task needs to have a different tag then to ensure unique task names)
+        reload: Set True if the Task should be run regardless of whether cached results already exist
+        **kwargs: Additional task-specific parameters
+    """
 
     class Status(Enum):
         """
@@ -136,6 +136,9 @@ class Task(Node, metaclass=ABCMeta):
             raise TaskError(f"Could not create task {self.task_name}({self.tag}): {e}")
 
     def assert_run_decorated(self) -> None:
+        """
+        Asserts that the run function is decorated with the :py:func:`~pyperunner.run` function decorator.
+        """
         if (
             not hasattr(self.run, "__decorated__")
             or "run" not in self.run.__decorated__  # type: ignore
@@ -176,7 +179,7 @@ class Task(Node, metaclass=ABCMeta):
             sort_keys=True,
         )
 
-        return hashlib.md5(s.encode("utf-8")).hexdigest()
+        return hashlib.sha256(s.encode("utf-8")).hexdigest()
 
     def _hash(self) -> List[str]:
         """
@@ -208,7 +211,7 @@ class Task(Node, metaclass=ABCMeta):
         Returns: Task hash
 
         """
-        return hashlib.md5("/".join(self._hash()).encode("utf-8")).hexdigest()
+        return hashlib.sha256("/".join(self._hash()).encode("utf-8")).hexdigest()
 
     def description(self) -> Dict[str, Union[str, Dict, List]]:
         """
@@ -262,7 +265,6 @@ class Task(Node, metaclass=ABCMeta):
             anything else)
 
         """
-        pass
 
     def run_wrapper(
         self,
@@ -271,6 +273,9 @@ class Task(Node, metaclass=ABCMeta):
         static: bool = False,
         receives_input: bool = True,
     ) -> TaskResult:
+        """
+        Wrapper for the run method that handles exceptions and stores the result.
+        """
         self.logger.info("Starting")
 
         if self.output_exists() and not self.reload:
@@ -466,4 +471,5 @@ class Task(Node, metaclass=ABCMeta):
         return joblib.load(filename)
 
     def __str__(self) -> str:
+        """String representation of the task"""
         return f"{self.task_name}({self.tag})#{self.hash()}#{hash(self)}"

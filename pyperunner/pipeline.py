@@ -1,18 +1,30 @@
-from typing import Dict, List, Type, Optional
-import yaml
-import networkx as nx
 import importlib
+from typing import Dict, List, Optional, Type
 
-from pyperunner.dag import Node, DAG
+import networkx as nx
+import yaml
+
+from pyperunner.dag import DAG, Node
 from pyperunner.task import Task
 from pyperunner.util import PipelineResult
 
 
 class PipelineError(Exception):
-    pass
+    """Base class for pipeline errors"""
 
 
 class Pipeline(DAG):
+    """
+    A pipeline describes which Tasks should be executed and in what order.
+
+    The pipeline is implemented as a directed, acyclic graph of :py:class:`Task` objects.
+
+    Args:
+        name: Name of the pipeline (supply any name that helps you later identifying what the pipeline was used for)
+        tasks: Optional list of *primary* tasks, i.e. tasks at which the pipeline will start (there will be no
+            connection between these tasks)
+    """
+
     colormap = {
         Task.Status.FAILURE: "red",
         Task.Status.SUCCESS: "green",
@@ -22,17 +34,7 @@ class Pipeline(DAG):
         Task.Status.SKIPPED: "skyblue",
     }
 
-    def __init__(self, name: str, tasks: List[Task] = None):
-        """
-        A pipeline describes which Tasks should be executed and in what order.
-
-        The pipeline is implemented as a directed, acyclic graph of :py:class:`Task` objects.
-
-        Args:
-            name: Name of the pipeline (supply any name that helps you later identifying what the pipeline was used for)
-            tasks: Optional list of *primary* tasks, i.e. tasks at which the pipeline will start (there will be no
-                connection between these tasks)
-        """
+    def __init__(self, name: str, tasks: Optional[List[Task]] = None):
         super().__init__()
         self.name = name
         self._results: Optional[PipelineResult] = None
@@ -129,7 +131,7 @@ class Pipeline(DAG):
 
         """
 
-        def get_class(class_name: str, module_name: str = None) -> Type:
+        def get_class(class_name: str, module_name: Optional[str] = None) -> Type:
 
             if module_name is None:
                 module_name = "__main__"
@@ -295,6 +297,7 @@ class Pipeline(DAG):
         self._results = results
 
     def results(self) -> PipelineResult:
+        """Returns the results of the pipeline run"""
         if self._results is None:
             raise AttributeError("Results have not been set. Run the pipeline first!")
         return self._results

@@ -1,6 +1,7 @@
 import pytest
 from fixtures import *  # noqa: F401, F403
 
+
 def pytest_addoption(parser):
     parser.addoption(
         "--runslow", action="store_true", default=False, help="run slow tests"

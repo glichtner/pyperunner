@@ -2,14 +2,20 @@ from pyperunner import Runner, Sequential, Task, run
 
 
 class Hello(Task):
+    """Example task that returns "Hello" """
+
     @run
     def run(self, data):
+        """Run the task"""
         return "Hello"
 
 
 class World(Task):
+    """Example task that appends "world" to the input data."""
+
     @run
     def run(self, data):
+        """Run the task"""
         return f"{data} world"
 
 

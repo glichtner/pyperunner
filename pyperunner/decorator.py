@@ -73,6 +73,10 @@ def task(name: str, receives_input: bool = True) -> Callable:
 
 
 def run(func: Callable) -> Callable:
+    """
+    Decorator for marking a method as a task run method.
+    """
+
     @wraps(func)
     def wrapper(self: Task, data: Any) -> Task.TaskResult:
         return self.run_wrapper(func, data)

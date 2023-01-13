@@ -1,8 +1,11 @@
-from typing import List, Union, Optional, Callable
 import inspect
 from collections import Counter
+from typing import Callable, List, Optional, Union
+
 import networkx as nx
+
 from pyperunner.dag.dagascii import draw
+
 try:
     from pygraphviz import AGraph
 
@@ -10,6 +13,7 @@ try:
 except ImportError:
     _GRAPHVIZ_AVAILABLE = False
 import logging
+
 
 class Node:
     """
@@ -128,6 +132,7 @@ class Node:
         return self
 
     def __str__(self) -> str:
+        """String representation of node"""
         return self.name
 
 
@@ -210,7 +215,6 @@ class DAG:
         gp.layout()
         gp.draw(fname)
 
-
     def is_unique_node(self, node: Node) -> bool:
         """
         Checks if the supplied node is unique within the graph (i.e. asserts that there is no other node in the graph
@@ -263,7 +267,7 @@ class DAG:
             cycle = [(n0.name, n1.name) for n0, n1 in cycle]
             raise ValueError(f"Graph is not acyclic, please remove cycle ({cycle})")
 
-    def summary(self, print_fn: Callable = None) -> None:
+    def summary(self, print_fn: Optional[Callable] = None) -> None:
         """
         Prints an ASCII summary of the DAG.
 

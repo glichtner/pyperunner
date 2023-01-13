@@ -6,15 +6,15 @@ This file uses contents from the sacred project: https://github.com/IDSIA/sacred
 The sacred project is released under the MIT license. A copy of the MIT license is supplied in
 ThirdPartyNotices.txt in the root directory of this project.
 """
-import os
 import inspect
+import os
 import platform
-from typing import List, Dict
+from typing import Dict, List
 
 from pyperunner.environment.dependencies import (
-    gather_sources_and_dependencies,
-    Source,
     PackageDependency,
+    Source,
+    gather_sources_and_dependencies,
 )
 
 

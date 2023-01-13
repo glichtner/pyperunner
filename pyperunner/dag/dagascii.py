@@ -13,7 +13,7 @@ functions. The original file can be found here:
 
 import math
 import os
-from typing import List, Dict, Union, ValuesView
+from typing import Dict, List, Union, ValuesView
 
 from grandalf.graphs import Edge, Graph, Vertex
 from grandalf.layouts import SugiyamaLayout
@@ -271,7 +271,10 @@ def draw(vertexes: List, edges: List) -> str:
         y = vertex.view.xy[1]
 
         canvas.box(
-            int(round(x - minx)), int(round(y - miny)), vertex.view.w, vertex.view.h,
+            int(round(x - minx)),
+            int(round(y - miny)),
+            vertex.view.w,
+            vertex.view.h,
         )
 
         canvas.text(int(round(x - minx)) + 1, int(round(y - miny)) + 1, vertex.data)
