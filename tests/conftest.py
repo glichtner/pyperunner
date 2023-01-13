@@ -1,6 +1,5 @@
 import pytest
-from fixtures import *
-
+from fixtures import *  # noqa: F401, F403
 
 def pytest_addoption(parser):
     parser.addoption(

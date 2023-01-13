@@ -1,6 +1,6 @@
 import pytest
 
-from pyperunner import Task, Pipeline, Runner, task, TaskError
+from pyperunner import Task, TaskError, task
 
 
 def test_node_not_initiated_error(pipeline, task_simple):
@@ -64,7 +64,7 @@ def test_task_class_without_run_method():
 
     with pytest.raises(
         TypeError,
-        match="Can't instantiate abstract class TestTask with abstract methods run",
+        match="Can't instantiate abstract class TestTask with abstract methods? run",
     ):
         TestTask()
 

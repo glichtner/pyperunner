@@ -3,7 +3,13 @@ import inspect
 from collections import Counter
 import networkx as nx
 from pyperunner.dag.dagascii import draw
+try:
+    from pygraphviz import AGraph
 
+    _GRAPHVIZ_AVAILABLE = True
+except ImportError:
+    _GRAPHVIZ_AVAILABLE = False
+import logging
 
 class Node:
     """
@@ -189,19 +195,21 @@ class DAG:
 
         return g
 
-    def plot_graph(self) -> bytes:
+    def plot_graph(self, fname: str) -> None:
         """
         Creates an image file of the DAG in PNG format.
 
         Returns:
             PNG image file of the graph
         """
+        if not _GRAPHVIZ_AVAILABLE:
+            logging.warning("graphviz not available, cannot plot graph")
+            return
         g = self.create_graph()
-        gp = nx.drawing.nx_pydot.to_pydot(g)
-        gp.set_simplify(True)
-        img = gp.create_png()
+        gp = nx.nx_agraph.to_agraph(g)
+        gp.layout()
+        gp.draw(fname)
 
-        return img
 
     def is_unique_node(self, node: Node) -> bool:
         """

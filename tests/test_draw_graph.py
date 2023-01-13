@@ -1,8 +1,6 @@
-import pytest
+import networkx as nx
 
 from pyperunner.dag import draw
-
-import networkx as nx
 
 
 def test_draw_dag_ascii_sequential():

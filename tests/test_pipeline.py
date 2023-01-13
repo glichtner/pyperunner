@@ -1,6 +1,7 @@
-import pytest
 import networkx as nx
-from pyperunner import PipelineError, Task, task, run, Sequential
+import pytest
+
+from pyperunner import PipelineError, Sequential, Task, run, task
 
 
 def assert_pipeline_has_run(pipeline, *, order=None, edges=None):

@@ -1,4 +1,3 @@
-import pytest
 
 
 def test_rerun_is_cached():

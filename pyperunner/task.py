@@ -29,7 +29,7 @@ def get_exception_str(exc: BaseException) -> str:
     Returns:  Exception traceback
 
     """
-    s = traceback.format_exception(etype=None, value=exc, tb=exc.__traceback__)
+    s = traceback.format_exception(None, value=exc, tb=exc.__traceback__)
     return "".join(s)
 
 

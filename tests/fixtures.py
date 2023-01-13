@@ -1,7 +1,7 @@
-import pytest
 import numpy as np
+import pytest
 
-from pyperunner import Pipeline, Runner, Task, task, run
+from pyperunner import Pipeline, Runner, Task, run, task
 
 
 @pytest.fixture

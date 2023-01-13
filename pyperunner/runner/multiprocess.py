@@ -50,7 +50,9 @@ class Process(multiprocessing.Process):
         sys.stderr = StreamLogger(self.logger, logging.ERROR)  # type: ignore
 
         try:
+            print("#######################Starting task")
             self.task.run(data=self.data)
+            print("#######################Task finished")
         except Exception as e:
             raise e
         finally:
@@ -412,10 +414,8 @@ class Runner:
         """
         self.assert_valid_pipeline()
 
-        img = self.pipeline.plot_graph()
         path = os.path.join(self.log_path_current_run, fname)
-        with open(path, "wb") as f:
-            f.write(img)
+        self.pipeline.plot_graph(path)
 
     def generate_run_name(self) -> str:
         """
