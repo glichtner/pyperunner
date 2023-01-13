@@ -421,7 +421,9 @@ class Task(Node, metaclass=ABCMeta):
 
         """
         filename = self.output_filename()
-        joblib.dump(output, filename)
+        # joblib.dump(output, filename)
+        with open(filename, "wb") as f:
+            f.write(b"test")
 
     def store_result(self, result: Result) -> None:
         """
